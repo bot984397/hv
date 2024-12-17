@@ -86,6 +86,21 @@ typedef union
 #define IA32_VMX_CR4_FIXED0_MSR 0x488
 #define IA32_VMX_CR4_FIXED1_MSR 0x489
 
+typedef union
+{
+   u64 value;
+   struct
+   {
+      u32 allowed_0;
+      u32 allowed_1;
+   }
+} ia32_generic_cap_msr;
+#define IA32_VMX_PINBASED_CTLS_MSR 0x481
+#define IA32_VMX_TRUE_PINBASED_CTLS_MSR 0x48D
+#define IA32_VMX_PROCBASED_CTLS_MSR 0x482
+#define IA32_VMX_TRUE_PROCBASED_CTLS_MSR 0x48E
+#define IA32_VMX_PROCBASED_CTLS2_MSR 0x48B
+
 // vmcs enumeration
 #define IA32_VMX_VMCS_ENUM_MSR 0x48A
 

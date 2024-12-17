@@ -262,10 +262,20 @@ int vcpu_setup_vmcs (vcpu_ctx_t *vcpu_ctx)
    return 1;
 }
 
+static inline __attribute__((always_inline)) 
+void vcpu_set_rev_ident (vcpu_ctx_t *vcpu_ctx)
+{
+   vcpu_ctx->vmxon_region->reserved.rev_ident =
+      vcpu_ctx->cached.vmx_basic.fields.vmcs_rev_ident;
+   vcpu_ctx->vmxon_region->reserved.reserved_0 = 0;
+   vcpu_ctx->vmcs_region->reserved.rev_ident =
+      vcpu_ctx->cached.vmx_basic.fields.vmcs_rev_ident;
+   vcpu_ctx->vmcs_region->reserved.reserved_0 = 0;
+}
+
 __attribute__((warn_unused_result)) vcpu_ctx_t* vcpu_alloc (void)
 {
    vcpu_ctx_t *vcpu_ctx;
-   ia32_vmx_basic_t basic = {0};
 
    vcpu_ctx = kmalloc (sizeof (vcpu_ctx_t), GFP_KERNEL);
    if (vcpu_ctx == NULL)
@@ -294,11 +304,8 @@ __attribute__((warn_unused_result)) vcpu_ctx_t* vcpu_alloc (void)
    LOG_DBG ("allocated vmxon region at: 0x%p", vcpu_ctx->vmxon_region);
    LOG_DBG ("allocated vmcs region at: 0x%p", vcpu_ctx->vmcs_region);
 
-   basic.value = __rdmsr (IA32_VMX_BASIC_MSR);
-   vcpu_ctx->vmxon_region->reserved.rev_ident = basic.fields.vmcs_rev_ident;
-   vcpu_ctx->vmxon_region->reserved.reserved_0 = 0; // fixed 0
-   vcpu_ctx->vmcs_region->reserved.rev_ident = basic.fields.vmcs_rev_ident;
-   vcpu_ctx->vmcs_region->reserved.reserved_0 = 0; // ordinary vmcs
+   vcpu_ctx->cached.vmx_basic.value = __rdmsr (IA32_VMX_BASIC_MSR);
+   vcpu_set_rev_ident (vcpu_ctx);
    
    return vcpu_ctx;
 }

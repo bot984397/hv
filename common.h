@@ -13,6 +13,8 @@
 #include <linux/types.h>
 #include <linux/atomic.h>
 
+#include "msr.h"
+
 typedef struct _vmm_ctx_t vmm_ctx_t;
 typedef struct _vcpu_ctx_t vcpu_ctx_t;
 typedef union _vm_region_t vm_region_t;
@@ -40,6 +42,11 @@ struct _vcpu_ctx_t
       u8 msr_bitmap_a[4096];
       u8 msr_bitmap_b[4096];
    } bitmaps;
+
+   struct
+   {
+      ia32_vmx_basic_t vmx_basic;
+   } cached;
 };
 
 union _vm_region_t

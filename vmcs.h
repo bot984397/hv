@@ -19,7 +19,7 @@ typedef union
       u64 process_posted_interrupts       : 1;
       u64 reserved_2                      : 56;
    } fields;
-} __vmx_pinbased_vm_execution_controls;
+} __vmx_pinbased_controls;
 
 typedef union
 {
@@ -56,7 +56,7 @@ typedef union
       u64 activate_secondary_controls  : 1;
       u64 reserved_6                   : 32;
    } fields;
-} __vmx_primary_procbased_vm_execution_controls;
+} __vmx_primary_procbased_controls;
 
 typedef union
 {
@@ -97,6 +97,15 @@ typedef union
       u64 instruction_timeout             : 1;
       u64 reserved_1                      : 32;
    } fields;
-} __vmx_secondary_procbased_vm_execution_controls;
+} __vmx_secondary_procbased_controls;
+
+typedef union
+{
+   u64 value;
+   struct
+   {
+      
+   } fields;
+} __vmx_tertiary_procbased_controls;
 
 #endif // __LKM_VMCS_H__
