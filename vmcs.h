@@ -54,7 +54,7 @@ typedef union
       u64 monitor_exiting              : 1;
       u64 pause_exiting                : 1;
       u64 activate_secondary_controls  : 1;
-      u64 reserved_5                   : 32;
+      u64 reserved_6                   : 32;
    } fields;
 } __vmx_primary_procbased_vm_execution_controls;
 

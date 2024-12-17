@@ -1,5 +1,10 @@
+#include <asm/special_insns.h>
+#include <asm/msr.h>
+
 #include "vmcs.h"
 #include "asm.h"
+#include "msr.h"
+#include "common.h"
 
 __attribute__((warn_unused_result))
 static int vmcs_setup_control (vcpu_ctx_t *vcpu_ctx)
