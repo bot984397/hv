@@ -1,0 +1,2 @@
+-- POWER STATE TRANSITIONS --
+> VMCLEAR before transitioning to power state s3/s4 or VMXOFF
