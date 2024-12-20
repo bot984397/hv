@@ -9,15 +9,9 @@
 
 vmm_ctx_t *vmm_ctx;
 
-static void debug (void)
-{
-   LOG_DBG ("pinbased size: %lu bits", sizeof (__vmx_pinbased_controls) * 8);
-}
-
 static int __init lkm_init (void)
 {
    LOG_DBG ("module loaded");
-   debug ();
 
    if (!cpu_hotplug_register ())
    {

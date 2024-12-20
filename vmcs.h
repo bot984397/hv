@@ -183,4 +183,35 @@ typedef union
    };
 } __vmx_entry_ctls;
 
+typedef union
+{
+   u32 ctl;
+   struct
+   {
+      u32 divide_error                    : 1;
+      u32 debug                           : 1;
+      u32 nmi_interrupt                   : 1;
+      u32 breakpoint                      : 1;
+      u32 overflow                        : 1;
+      u32 bound_range_exceeded            : 1;
+      u32 invalid_opcode                  : 1;
+      u32 device_not_available            : 1;
+      u32 double_fault                    : 1;
+      u32 coprocessor_segment_overrun     : 1;
+      u32 invalid_tss                     : 1;
+      u32 segment_not_present             : 1;
+      u32 stack_segment_fault             : 1;
+      u32 general_protection              : 1;
+      u32 page_fault                      : 1;
+      u32 reserved_1                      : 1;
+      u32 floating_point_error            : 1;
+      u32 alignment_check                 : 1;
+      u32 machine_check                   : 1;
+      u32 simd_floating_point_exception   : 1;
+      u32 virtualization_exception        : 1;
+      u32 control_protection_exception    : 1;
+      u32 reserved_2                      : 10;
+   };
+} __vmx_exception_bitmap;
+
 #endif // __LKM_VMCS_H__

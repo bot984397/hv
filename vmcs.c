@@ -517,6 +517,55 @@ static __vmx_entry_ctls vmcs_setup_entry_ctls (void)
    return control;
 }
 
+static __vmx_exception_bitmap vmcs_setup_exception_bitmap (void)
+{
+   __vmx_exception_bitmap control = {0};
+
+   control.divide_error = false;
+
+   control.debug = false;
+
+   control.nmi_interrupt = false;
+
+   control.breakpoint = false;
+
+   control.overflow = false;
+
+   control.bound_range_exceeded = false;
+
+   control.invalid_opcode = false;
+
+   control.device_not_available = false;
+
+   control.double_fault = false;
+
+   control.coprocessor_segment_overrun = false;
+
+   control.invalid_tss = false;
+
+   control.segment_not_present = false;
+
+   control.stack_segment_fault = false;
+
+   control.general_protection = false;
+
+   control.page_fault = false;
+
+   control.floating_point_error = false;
+
+   control.alignment_check = false;
+
+   control.machine_check = false;
+
+   control.simd_floating_point_exception = false;
+
+   control.virtualization_exception = false;
+
+   control.control_protection_exception = false;
+
+   return control;
+}
+
 static void vmcs_setup_control (vcpu_ctx_t *vcpu_ctx)
 {
    __vmx_pinbased_controls pinbased_ctl;
@@ -524,6 +573,7 @@ static void vmcs_setup_control (vcpu_ctx_t *vcpu_ctx)
    __vmx_procbased_ctls2 procbased_ctl2;
    __vmx_exit_ctls exit_ctl;
    __vmx_entry_ctls entry_ctl;
+   __vmx_exception_bitmap exception_bitmap;
 
    u8 true_controls = vcpu_ctx->cached.vmx_basic.fields.vmx_cap_support;
 
@@ -560,8 +610,8 @@ static void vmcs_setup_control (vcpu_ctx_t *vcpu_ctx)
          : IA32_VMX_TRUE_ENTRY_CTLS_MSR);
    __vmx_vmwrite (VMCS_CTRL_VMENTRY_CONTROLS, entry_ctl.ctl);
 
-   // no vm-exits on any exception
-   __vmx_vmwrite (VMCS_CTRL_EXCEPTION_BITMAP, 0);
+   exception_bitmap = vmcs_setup_exception_bitmap ();
+   __vmx_vmwrite (VMCS_CTRL_EXCEPTION_BITMAP, exception_bitmap.ctl);
 
    __vmx_vmwrite (VMCS_CTRL_PAGE_FAULT_ERROR_CODE_MASK, 0);
    __vmx_vmwrite (VMCS_CTRL_PAGE_FAULT_ERROR_CODE_MATCH, 0);
@@ -569,22 +619,22 @@ static void vmcs_setup_control (vcpu_ctx_t *vcpu_ctx)
    __vmx_vmwrite (VMCS_CTRL_CR3_TARGET_COUNT, 0);
 }
 
-__attribute__((warn_unused_result)) 
-static int vmcs_setup_guest (vcpu_ctx_t *vcpu_ctx)
+static void vmcs_setup_guest (vcpu_ctx_t *vcpu_ctx)
 {
-   return 0;
 }
 
-__attribute__((warn_unused_result))
-static int vmcs_setup_host (vcpu_ctx_t *vcpu_ctx)
+static void vmcs_setup_host (vcpu_ctx_t *vcpu_ctx)
 {
-   return 0;
 }
 
 __attribute__((warn_unused_result)) 
 int vmcs_setup (vcpu_ctx_t *vcpu_ctx)
 {
    vmcs_setup_control (vcpu_ctx);
+   
+   vmcs_setup_guest (vcpu_ctx);
+
+   vmcs_setup_host (vcpu_ctx);
 
    return 0;
 }
