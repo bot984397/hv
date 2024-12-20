@@ -54,7 +54,7 @@ typedef union
       u32 monitor_exiting              : 1;
       u32 pause_exiting                : 1;
       u32 activate_secondary_controls  : 1;
-   } bits;
+   };
 } __vmx_procbased_ctls;
 
 typedef union
@@ -145,5 +145,42 @@ typedef union
       u32 activate_secondary_controls     : 1;
    };
 } __vmx_exit_ctls;
+
+typedef union
+{
+   u32 ctl;
+   struct
+   {
+      u32 reserved_0                      : 3;
+      u32 prematurely_busy_shadow_stack   : 1;
+      u32 reserved_1                      : 28;
+   };
+} __vmx_exit_ctls2;
+
+typedef union
+{
+   u32 ctl;
+   struct
+   {
+      u32 reserved_0                         : 2;
+      u32 load_debug_controls                : 1;
+      u32 reserved_1                         : 6;
+      u32 ia32e_mode_guest                   : 1;
+      u32 entry_to_smm                       : 1;
+      u32 deactivate_dual_monitor_treatment  : 1;
+      u32 reserved_2                         : 1;
+      u32 load_ia32_perf_global_ctrl         : 1;
+      u32 load_ia32_pat                      : 1;
+      u32 load_ia32_efer                     : 1;
+      u32 load_ia32_bndcfgs                  : 1;
+      u32 conceal_vmx_from_pt                : 1;
+      u32 load_ia32_rtit_ctl                 : 1;
+      u32 load_uinv                          : 1;
+      u32 load_cet_state                     : 1;
+      u32 load_guest_ia32_lbr_ctl            : 1;
+      u32 load_pkrs                          : 1;
+      u32 reserved_3                         : 9;
+   };
+} __vmx_entry_ctls;
 
 #endif // __LKM_VMCS_H__

@@ -56,7 +56,117 @@ static __vmx_procbased_ctls vmcs_setup_primary_procbased_ctls (void)
 {
    __vmx_procbased_ctls control = {0};
 
-   
+   /*
+    * true: vm exit occurs at the beginning of any instruction
+    *       if RFLAGS.IF == 1 and there are no other interrupt blocks
+    */
+   control.interrupt_window_exiting = false;
+
+   /*
+    * true: use tsc offset field for RDTSC / RDTSCP / IA32_TIME_STAMP_COUNTER
+    */
+   control.use_tsc_offsetting = false;
+
+   /*
+    * true: executions of HLT cause vm exits
+    */
+   control.hlt_exiting = false;
+
+   /*
+    * true: executions of INVLPG cause vm exits
+    */
+   control.invlpg_exiting = false;
+
+   /*
+    * true: executions of MWAIT cause vm exits
+    */
+   control.mwait_exiting = false;
+
+   /*
+    * true: executions of RDPMC cause vm exits
+    */
+   control.rdpmc_exiting = false;
+
+   /*
+    * true: executions of RDTSC / RDTSCP cause vm exits
+    */
+   control.rdtsc_exiting = false;
+
+   /*
+    * true: MOV to CR3 causes a vm exit
+    */
+   control.cr3_load_exiting = false;
+
+   /*
+    * true: MOV from CR3 causes a vm exit
+    */
+   control.cr3_store_exiting = false;
+
+   /*
+    * true: activate tertiary processor based vm-execution controls
+    */
+   control.activate_tertiary_controls = false;
+
+   /*
+    * true: MOV to CR8 causes a vm exit
+    */
+   control.cr8_load_exiting = false;
+
+   /*
+    * true: MOV from CR8 causes a vm exit
+    */
+   control.cr8_store_exiting = false;
+
+   /*
+    * true: enables TPR virtualization and other APIC-virtualization features
+    */
+   control.use_tpr_shadow = false;
+
+   /*
+    * true: vm exit at the beginning of any instruction if there is no
+    *       NMI blocking
+    */
+   control.nmi_window_exiting = false;
+
+   /*
+    * true: MOV DR execution causes a vm exit
+    */
+   control.mov_dr_exiting = false;
+
+   /*
+    * true: executions of I/O instructions cause vm exits
+    */
+   control.unconditional_io_exiting = false;
+
+   /*
+    * true: I/O bitmaps are used to restrict I/O instruction execution
+    */
+   control.use_io_bitmaps = false;
+
+   /*
+    * true: monitor trap flag debugging feature eneabled
+    */
+   control.monitor_trap_flag = false;
+
+   /*
+    * true: MSR bitmaps are used to control RDMSR / WRMSR execution
+    */
+   control.use_msr_bitmaps = true;
+
+   /*
+    * true: executions of MONITOR cause a vm exit
+    */
+   control.monitor_exiting = false;
+
+   /*
+    * true: executions of PAUSE cause a vm exit
+    */
+   control.pause_exiting = false;
+
+   /*
+    * true: activate secondary processor based vm-execution controls
+    */
+   control.activate_secondary_controls = true;
 
    return control;
 }
@@ -74,8 +184,177 @@ static __vmx_exit_ctls vmcs_setup_primary_exit_ctls (void)
 {
    __vmx_exit_ctls control = {0};
 
+   /*
+    * true: DR7 and IA32_DEBUGCTL MSR are saved on vm exit
+    */
+   control.save_debug_controls = true;
 
+   /*
+    * true: processor is in 64-bit mode after vm exit
+    */
+   control.host_address_space_size = true;
 
+   /*
+    * true: IA32_PERF_GLOBAL_CTRL MSR is loaded on vm exit
+    */
+   control.load_ia32_perf_global_ctrl = false;
+
+   /*
+    * true: if vm exit occurs due to external interrupt, processor
+    *       acknowledges the interrupt controller, acquiring the interrupts
+    *       vector. vector is stored in the interruption-information field
+    */
+   control.acknowledge_interrupt_on_exit = true;
+
+   /*
+    * true: IA32_PAT MSR is saved on vm exit
+    */
+   control.save_ia32_pat = false;
+
+   /*
+    * true: IA32_PAT MSR is loaded on vm exit
+    */
+   control.load_ia32_pat = false;
+
+   /*
+    * true: IA32_EFER MSR is saved on vm exit
+    */
+   control.save_ia32_efer = false;
+
+   /*
+    * true: IA32_EFER MSR is loaded on vm exit
+    */
+   control.load_ia32_efer = false;
+
+   /*
+    * true: vmx preemption timer value is saved on vm exit
+    */
+   control.save_vmx_preemption_timer_value = false;
+
+   /*
+    * true: IA32_BNDCFGS MSR is cleared on vm exit
+    */
+   control.clear_ia32_bndcfgs = false;
+
+   /*
+    * true: Intel PT does not produce a paging information packet on VM exit
+    *       or a VMCS packet on SMM VM exit
+    */
+   control.conceal_vmx_from_pt = true;
+
+   /*
+    * true: IA32_RTIT_CTL MSR is cleared on VM exit
+    */
+   control.clear_ia32_rtit_ctl = false;
+
+   /*
+    * true: IA32_LBR_CTL MSR is cleared on VM exit
+    */
+   control.clear_ia32_lbr_ctl = false;
+
+   /*
+    * true: UINV is cleared on VM exit
+    */
+   control.clear_uinv = false;
+
+   /*
+    * true: CET-related MSRs and SPP are loaded on VM exit
+    */
+   control.load_cet_state = false;
+
+   /*
+    * true: PKRS is loaded on VM exit
+    */
+   control.load_pkrs = false;
+
+   /*
+    * true: IA32_PERF_GLOBAL_CTL is saved on VM exit
+    */
+   control.save_ia32_perf_global_ctl = false;
+
+   /*
+    * true: activate secondary VM-exit controls
+    */
+   control.activate_secondary_controls = false;
+
+   return control;
+}
+
+static __vmx_entry_ctls vmcs_setup_entry_ctls (void)
+{
+   __vmx_entry_ctls control = {0};
+
+   /*
+    * true: DR7 and IA32_DEBUGCTL MSR are loaded on VM entry
+    */
+   control.load_debug_controls = true;
+
+   /*
+    * true: logical processor is in IA-32e mode after VM entry
+    */
+   control.ia32e_mode_guest = true;
+
+   /*
+    * true: logical processor is in SMM after VM entry
+    */
+   control.entry_to_smm = false;
+
+   /*
+    * true: SMIs and SMM get default treatment after VM entry
+    */
+   control.deactivate_dual_monitor_treatment = false;
+
+   /*
+    * true: IA32_PERF_GLOBAL_CTRL MSR is loaded on VM entry
+    */
+   control.load_ia32_perf_global_ctrl = false;
+
+   /*
+    * true: IA32_PAT MSR is loaded on VM entry
+    */
+   control.load_ia32_pat = false;
+
+   /*
+    * true: IA32_EFER MSR is loaded on VM entry
+    */
+   control.load_ia32_efer = false;
+
+   /*
+    * true: IA32_BNDCFGS MSR is loaded on VM entry
+    */
+   control.load_ia32_bndcfgs = false;
+
+   /*
+    * true: Intel PT does not produce a paging information packet on VM entry
+    *       or a VMCS packet on VM entry that returns from SMM
+    */
+   control.conceal_vmx_from_pt = true;
+
+   /*
+    * true: IA32_RTIT_CTL MSR is loaded on VM entry
+    */
+   control.load_ia32_rtit_ctl = false;
+
+   /*
+    * true: UINV is loaded on VM entry
+    */
+   control.load_uinv = false;
+
+   /*
+    * true: CET-related MSRs and SPP are loaded on VM entry
+    */
+   control.load_cet_state = false;
+
+   /*
+    * true: guest IA32_LBR_CTL MSR is loaded on VM entry
+    */
+   control.load_guest_ia32_lbr_ctl = false;
+
+   /*
+    * true: PKRS is loaded on VM entry
+    */
+   control.load_pkrs = false;
+   
    return control;
 }
 
@@ -84,25 +363,43 @@ static void vmcs_setup_control (vcpu_ctx_t *vcpu_ctx)
    __vmx_pinbased_controls pinbased_ctl;
    __vmx_procbased_ctls procbased_ctl;
    __vmx_procbased_ctls2 procbased_ctl2;
+   __vmx_exit_ctls exit_ctl;
+   __vmx_entry_ctls entry_ctl;
 
    u8 true_controls = vcpu_ctx->cached.vmx_basic.fields.vmx_cap_support;
 
+   // pinbased vm-execution controls
    pinbased_ctl = vmcs_setup_pinbased_ctls ();
    vmcs_adjust_controls (&pinbased_ctl.ctl, true_controls == 1
          ? IA32_VMX_PINBASED_CTLS_MSR
          : IA32_VMX_TRUE_PINBASED_CTLS_MSR);
+   __vmx_vmwrite (VMCS_CTRL_PINBASED_CONTROLS, pinbased_ctl.ctl);
 
+   // primary processor based vm-execution controls
    procbased_ctl = vmcs_setup_primary_procbased_ctls ();
    vmcs_adjust_controls (&procbased_ctl.ctl, true_controls == 1
          ? IA32_VMX_PROCBASED_CTLS_MSR
          : IA32_VMX_TRUE_PROCBASED_CTLS_MSR);
+   __vmx_vmwrite (VMCS_CTRL_PROCBASED_CTLS, procbased_ctl.ctl);
 
+   // secondary processor based vm-execution controls
    procbased_ctl2 = vmcs_setup_secondary_procbased_ctls ();
    vmcs_adjust_controls (&procbased_ctl2.ctl, IA32_VMX_PROCBASED_CTLS2_MSR);
-
-   __vmx_vmwrite (VMCS_CTRL_PINBASED_CONTROLS, pinbased_ctl.ctl);
-   __vmx_vmwrite (VMCS_CTRL_PROCBASED_CTLS, procbased_ctl.ctl);
    __vmx_vmwrite (VMCS_CTRL_PROCBASED_CTLS2, procbased_ctl2.ctl);
+
+   // primary vm-exit controls
+   exit_ctl = vmcs_setup_primary_exit_ctls ();
+   vmcs_adjust_controls (&exit_ctl.ctl, true_controls == 1
+         ? IA32_VMX_EXIT_CTLS_MSR
+         : IA32_VMX_TRUE_EXIT_CTLS_MSR);
+   __vmx_vmwrite (VMCS_CTRL_PRIMARY_VMEXIT_CONTROLS, exit_ctl.ctl);
+
+   // vm-entry controls
+   entry_ctl = vmcs_setup_entry_ctls ();
+   vmcs_adjust_controls (&entry_ctl.ctl, true_controls == 1
+         ? IA32_VMX_ENTRY_CTLS_MSR
+         : IA32_VMX_TRUE_ENTRY_CTLS_MSR);
+   __vmx_vmwrite (VMCS_CTRL_VMENTRY_CONTROLS, entry_ctl.ctl);
 
    // no vm-exits on any exception
    __vmx_vmwrite (VMCS_CTRL_EXCEPTION_BITMAP, 0);
