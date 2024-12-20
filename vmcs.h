@@ -95,7 +95,7 @@ typedef union
       u32 vmm_bus_lock_detection          : 1;
       u32 instruction_timeout             : 1;
       u32 reserved_1                      : 32;
-   } bits;
+   };
 } __vmx_procbased_ctls2;
 
 typedef union

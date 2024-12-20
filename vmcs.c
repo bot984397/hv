@@ -175,7 +175,162 @@ static __vmx_procbased_ctls2 vmcs_setup_secondary_procbased_ctls (void)
 {
    __vmx_procbased_ctls2 control = {0};
 
+   /*
+    * true: accesses to page with APIC-access address are treated specially
+    */
+   control.virtualize_apic_accesses = false;
 
+   /*
+    * true: Extended Page Tables (EPT) are enabled
+    */
+   control.enable_ept = true;
+
+   /*
+    * true: LGDT, LIDT, LLDT, LTR, SGDT, SIDT, SLDT and STR cause VM exits
+    */
+   control.descriptor_table_exiting = false;
+
+   /*
+    * false: execution of RDTSCP causes an invalid-opcode (#UD) exception
+    */
+   control.enable_rdtscp = true;
+
+   /*
+    * true: RDMSR and WRMSR from and to APIC MSRs are treated specially
+    */
+   control.virtualize_x2apic_mode = false;
+
+   /*
+    * true: cached translations of linear addresses are associated with VPID
+    */
+   control.enable_vpid = true;
+
+   /*
+    * true: executions of WBINVD cause VM exits
+    */
+   control.wbinvd_exiting = false;
+
+   /*
+    * true: guest may run in unpaged protected or real address mode
+    */
+   control.unrestricted_guest = false;
+
+   /*
+    * true: certain APIC accesses are virtualized
+    */
+   control.apic_register_virtualization = false;
+
+   /*
+    * true: evalutation and delivery of pending virtual interrupts enabled
+    */
+   control.virtual_interrupt_delivery = false;
+
+   /*
+    * true: series of PAUSE executions can cause a VM exit
+    */
+   control.pause_loop_exiting = false;
+
+   /*
+    * true: executions of RDRAND cause VM exits
+    */
+   control.rdrand_exiting = false;
+
+   /*
+    * false: execution of INVPCID causes an invalid-opcode (#UD) exception
+    */
+   control.enable_invpcid = true;
+
+   /*
+    * true: VMFUNC execution in VMX Non-Root operation enabled
+    */
+   control.enable_vm_functions = false;
+
+   /*
+    * true: VMREAD / VMWRITE in VMX Non-Root operation may access shadow VMCS
+    */
+   control.vmcs_shadowing = false;
+
+   /*
+    * true: executions of ENCLS consult the ENCLS-exiting bitmap to determine
+    *       wether the instruction causes a VM exit
+    */
+   control.enable_encls_exiting = false;
+
+   /*
+    * true: executions of RDSEED cause VM exits
+    */
+   control.rdseed_exiting = false;
+
+   /*
+    * true: access to guest-physical address that sets EPT dirty bit first
+    *       adds an entry to the page modification log (PML)
+    */
+   control.enable_pml = false;
+
+   /*
+    * true: EPT violations may cause virtualization exceptions (#VE) instead
+    *       of VM exits
+    */
+   control.ept_violation_ve = false;
+
+   /*
+    * true: Intel PT suppresses from PIPs an indication that the processor
+    *       was in VMX non-root operation and omits a VMCS packet from any
+    *       PSB+ produced in VMX non-root operation
+    */
+   control.conceal_vmx_from_pt = true;
+
+   /*
+    * false: execution of XSAVES / XRSTORS causes an undefined-opcode
+    *        exception (#UD)
+    */
+   control.enable_xsaves_xrstors = true;
+
+   /*
+    * true: EPT execute permissions are based on wether the linear address
+    *       being accessed is supervisor or user mode
+    */
+   control.mode_based_ept_execute = false;
+
+   /*
+    * true:
+    */
+   control.ept_sub_page_write_permissions = false;
+
+   /*
+    * true:
+    */
+   control.intel_pt_use_guest_phys_addr = false;
+
+   /*
+    * true:
+    */
+   control.use_tsc_scaling = false;
+
+   /*
+    * true:
+    */
+   control.enable_user_wait_and_pause = false;
+
+   /*
+    * true:
+    */
+   control.enable_pconfig = false;
+
+   /*
+    * true:
+    */
+   control.enable_enclv_exiting = false;
+
+   /*
+    * true:
+    */
+   control.vmm_bus_lock_detection = false;
+
+   /*
+    * true:
+    */
+   control.instruction_timeout = false;
 
    return control;
 }
