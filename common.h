@@ -44,28 +44,20 @@ struct _vcpu_ctx_t
 
    vm_region_t *vmxon_region;
    u64 vmxon_physical;
+
    vm_region_t *vmcs_region;
    u64 vmcs_physical;
 
    struct
    {
-      unsigned char io_bitmap_a[4096];
+      u8 *io_bitmap_a;
       u64 io_bitmap_a_physical;
 
-      u8 io_bitmap_b[4096];
+      u8 *io_bitmap_b;
       u64 io_bitmap_b_physical;
 
-      u8 msr_bitmap_r_low[4096];
-      u64 msr_bitmap_r_low_physical;
-
-      u8 msr_bitmap_r_high[4096];
-      u64 msr_bitmap_r_high_physical;
-
-      u8 msr_bitmap_w_low[4096];
-      u64 msr_bitmap_w_low_physical;
-
-      u8 msr_bitmap_w_high[4096];
-      u64 msr_bitmap_w_high_physical;
+      u8 *msr_bitmaps;
+      u64 msr_bitmaps_physical;
    } bitmaps;
 
    struct

@@ -219,15 +219,6 @@ static void vcpu_set_cr_fixed (void)
 static __attribute__((warn_unused_result))
 int vcpu_setup_vmcs (vcpu_ctx_t *vcpu_ctx)
 {
-   /*
-      1. guest state area
-      2. host state area
-      3. vm-execution control fields ┐
-      4. vm-exit control fields      ├─ vmx controls 
-      5. vm-entry control fields     ┘
-      6. vm-exit information fields - IA32_VMX_MISC MSR
-   */
-
    if (__vmx_vmclear (vcpu_ctx->vmcs_physical) != 0)
    {
       VCPU_DBG ("%s", get_vmx_error ());
@@ -238,21 +229,6 @@ int vcpu_setup_vmcs (vcpu_ctx_t *vcpu_ctx)
       VCPU_DBG ("%s", get_vmx_error ());
       return 0;
    }
-
-   // guest state area
-   __vmx_vmwrite (VMCS_GUEST_CR0, __read_cr0 ());
-   __vmx_vmwrite (VMCS_GUEST_CR3, __read_cr3 ());
-   __vmx_vmwrite (VMCS_GUEST_CR4, __read_cr4 ());
-   __vmx_vmwrite (VMCS_GUEST_DR7, __read_dr7 ());
-   // VMCS_GUEST_RSP
-   // VMCS_GUEST_RIP
-   
-   __vmx_vmwrite (VMCS_GUEST_RFLAGS, __read_rflags ());
-
-   __vmx_vmwrite (VMCS_GUEST_IA32_DEBUGCTL, __rdmsr (IA32_DEBUGCTL_MSR));
-   __vmx_vmwrite (VMCS_GUEST_IA32_SYSENTER_CS, __rdmsr (IA32_SYSENTER_CS_MSR));
-   __vmx_vmwrite (VMCS_GUEST_IA32_SYSENTER_ESP, __rdmsr (IA32_SYSENTER_ESP_MSR));
-   __vmx_vmwrite (VMCS_GUEST_IA32_SYSENTER_EIP, __rdmsr (IA32_SYSENTER_EIP_MSR));
 
    int status = __vmx_vmlaunch ();
    if (status != 0)
@@ -282,34 +258,78 @@ __attribute__((warn_unused_result)) vcpu_ctx_t* vcpu_alloc (void)
    vcpu_ctx = kmalloc (sizeof (vcpu_ctx_t), GFP_KERNEL);
    if (vcpu_ctx == NULL)
    {
-      LOG_DBG ("failed to allocate vcpu ctx");
-      return NULL;
+      goto FAILURE;
    }
 
    vcpu_ctx->vmxon_region = (vm_region_t *)mem_alloc_pages (0);
    if (vcpu_ctx->vmxon_region == NULL)
    {
-      kfree (vcpu_ctx);
-      return NULL;
+      goto FAILURE;
    }
    vcpu_ctx->vmxon_physical = mem_virt_to_phys (vcpu_ctx->vmxon_region);
 
    vcpu_ctx->vmcs_region = (vm_region_t *)mem_alloc_pages (0);
    if (vcpu_ctx->vmcs_region == NULL)
    {
-      mem_free_pages ((unsigned long)vcpu_ctx->vmxon_region, 0);
-      kfree (vcpu_ctx);
-      return NULL;
+      goto FAILURE;
    }
    vcpu_ctx->vmcs_physical = mem_virt_to_phys (vcpu_ctx->vmcs_region);
 
-   LOG_DBG ("allocated vmxon region at: 0x%p", vcpu_ctx->vmxon_region);
-   LOG_DBG ("allocated vmcs region at: 0x%p", vcpu_ctx->vmcs_region);
+   vcpu_ctx->bitmaps.io_bitmap_a = (u8 *)mem_alloc_pages (0);
+   if (vcpu_ctx->bitmaps.io_bitmap_a == NULL)
+   {
+      goto FAILURE;
+   }
+   vcpu_ctx->bitmaps.io_bitmap_a_physical 
+      = mem_virt_to_phys (vcpu_ctx->bitmaps.io_bitmap_a);
+
+   vcpu_ctx->bitmaps.io_bitmap_b = (u8 *)mem_alloc_pages (0);
+   if (vcpu_ctx->bitmaps.io_bitmap_b == NULL)
+   {
+      goto FAILURE;
+   }
+   vcpu_ctx->bitmaps.io_bitmap_b_physical
+      = mem_virt_to_phys (vcpu_ctx->bitmaps.io_bitmap_b);
+
+   vcpu_ctx->bitmaps.msr_bitmaps = (u8 *)mem_alloc_pages (0);
+   if (vcpu_ctx->bitmaps.msr_bitmaps == NULL)
+   {
+      goto FAILURE;
+   }
+   vcpu_ctx->bitmaps.msr_bitmaps_physical
+      = mem_virt_to_phys (vcpu_ctx->bitmaps.msr_bitmaps);
 
    vcpu_ctx->cached.vmx_basic.value = __rdmsr (IA32_VMX_BASIC_MSR);
    vcpu_set_rev_ident (vcpu_ctx);
    
    return vcpu_ctx;
+
+FAILURE:
+   if (vcpu_ctx->vmxon_region)
+   {
+      mem_free_pages ((unsigned long)vcpu_ctx->vmxon_region, 0);
+   }
+   if (vcpu_ctx->vmcs_region)
+   {
+      mem_free_pages ((unsigned long)vcpu_ctx->vmcs_region, 0);
+   }
+   if (vcpu_ctx->bitmaps.io_bitmap_a)
+   {
+      mem_free_pages ((unsigned long)vcpu_ctx->bitmaps.io_bitmap_a, 0);
+   }
+   if (vcpu_ctx->bitmaps.io_bitmap_b)
+   {
+      mem_free_pages ((unsigned long)vcpu_ctx->bitmaps.io_bitmap_b, 0);
+   }
+   if (vcpu_ctx->bitmaps.msr_bitmaps)
+   {
+      mem_free_pages ((unsigned long)vcpu_ctx->bitmaps.msr_bitmaps, 0);
+   }
+   if (vcpu_ctx)
+   {
+      kfree (vcpu_ctx);
+   }
+   return NULL;
 }
 
 void vcpu_free (vcpu_ctx_t *vcpu_ctx)
