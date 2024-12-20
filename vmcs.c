@@ -7,67 +7,110 @@
 #include "enc.h"
 #include "common.h"
 
-static u64 vmcs_adjust_controls (u32 cap)
+static void vmcs_adjust_controls (u32 *ctl, u32 cap)
 {
-   u64 final = 0;
    ia32_generic_cap_msr cap_msr = {0};
-
    cap_msr.value = __rdmsr (cap);
 
-   final |= cap_msr.allowed_0;
-   final &= cap_msr.allowed_1;
-
-   return final;
+   *ctl |= cap_msr.split.allowed_0;
+   *ctl &= cap_msr.split.allowed_1;
 }
 
-static void vmcs_setup_pinbased_ctls (vcpu_ctx_t *vcpu_ctx)
+static __vmx_pinbased_controls vmcs_setup_pinbased_ctls (void)
 {
-   __vmx_pinbased_controls pinbased_ctl = {0};
-   pinbased_ctl.value = vmcs_adjust_controls (
-         vcpu_ctx->cached.vmx_basic.fields.vmx_cap_support == 1
+   __vmx_pinbased_controls control = {0};
+
+   /*
+    * true: external interrupts cause vm exits
+    * false: external interrupts delivered through guest IDT
+    */
+   control.external_interrupt_exiting = false; 
+
+   /*
+    * true: NMIs cause vm exits
+    * false: NMIs delivered via descriptor 2 of the IDT
+    */
+   control.nmi_exiting = false;
+
+   /* 
+    * true: NMIs are never blocked
+    */
+   control.virtual_nmis = false;
+
+   /*
+    * true: vmx preemption timer enabled
+    * false: vmx preemption timer disabled
+    */
+   control.activate_vmx_preemption_timer = false;
+
+   /*
+    * true: interrupts with posted-interrupt notification vector are treated
+    *       specially, updating virtual-APIC page with PI requests
+    */
+   control.process_posted_interrupts = false;
+
+   return control;
+}
+
+static __vmx_procbased_ctls vmcs_setup_primary_procbased_ctls (void)
+{
+   __vmx_procbased_ctls control = {0};
+
+   
+
+   return control;
+}
+
+static __vmx_procbased_ctls2 vmcs_setup_secondary_procbased_ctls (void)
+{
+   __vmx_procbased_ctls2 control = {0};
+
+
+
+   return control;
+}
+
+static __vmx_exit_ctls vmcs_setup_primary_exit_ctls (void)
+{
+   __vmx_exit_ctls control = {0};
+
+
+
+   return control;
+}
+
+static void vmcs_setup_control (vcpu_ctx_t *vcpu_ctx)
+{
+   __vmx_pinbased_controls pinbased_ctl;
+   __vmx_procbased_ctls procbased_ctl;
+   __vmx_procbased_ctls2 procbased_ctl2;
+
+   u8 true_controls = vcpu_ctx->cached.vmx_basic.fields.vmx_cap_support;
+
+   pinbased_ctl = vmcs_setup_pinbased_ctls ();
+   vmcs_adjust_controls (&pinbased_ctl.ctl, true_controls == 1
          ? IA32_VMX_PINBASED_CTLS_MSR
          : IA32_VMX_TRUE_PINBASED_CTLS_MSR);
 
-   __vmx_vmwrite (VMCS_CTRL_PINBASED_EXECUTION_CONTROLS, pinbased_ctl.value);
-}
-
-static void vmcs_setup_procbased_ctls (vcpu_ctx_t *vcpu_cts)
-{
-   __vmx_primary_procbased_controls primary_procbased_ctl = {0};
-   __vmx_secondary_procbased_controls secondary_procbased_ctl = {0};
-   __vmx_tertiary_procbased_controls tertiary_procbased_ctl = {0};
-
-   primary_procbased_ctl.value = vmcs_adjust_controls (
-         vcpu_ctx->cached.vmx_basic.fields.vmx_cap_support == 1
-         ? IA32_VMX_PROCBASED_CTLS_MSR
-         : IA32_VMX_TRUE_PROCBASED_CTLS_MSR);
-   primary_procbased_ctl.fields.activate_secondary_controls = 1;
-   primary_procbased_ctl.fields.activate_tertiary_controls = 1;
-   primary_procbased_ctl.fields.use_io_bitmaps = 1;
-   primary_procbased_ctl.fields.use_msr_bitmaps = 1;
-   __vmx_vmwrite (VMCS_CTRL_PRIMARY_PROCBASED_CONTROLS,
-                  primary_procbased_ctl.value);
-
-   secondary_procbased_ctl.value = vmcs_adjust_controls (
-         IA32_VMX_PROCBASED_CTLS2_MSR);
-   secondary_procbased_ctl.fields.enable_vm_functions = 1;
-   secondary_procbased_ctl.fields.vmcs_shadowing = 0;
-   __vmx_vmwrite (VMCS_CTRL_SECONDARY_PROCBASED_CONTROLS,
-                  secondary_procbased_ctl.value);
-}
-
-__attribute__((warn_unused_result))
-static int vmcs_setup_control (vcpu_ctx_t *vcpu_ctx)
-{
-   __vmx_primary_procbased_controls primary_procbased_ctl = {0};
-   __vmx_secondary_procbased_controls secondary_procbased_ctl = {0};
-
-   primary_procbased_ctl.value = vmcs_adjust_controls (
-         vcpu_ctx->cached.vmx_basic.fields.vmx_cap_support == 1
+   procbased_ctl = vmcs_setup_primary_procbased_ctls ();
+   vmcs_adjust_controls (&procbased_ctl.ctl, true_controls == 1
          ? IA32_VMX_PROCBASED_CTLS_MSR
          : IA32_VMX_TRUE_PROCBASED_CTLS_MSR);
 
-   return 0;
+   procbased_ctl2 = vmcs_setup_secondary_procbased_ctls ();
+   vmcs_adjust_controls (&procbased_ctl2.ctl, IA32_VMX_PROCBASED_CTLS2_MSR);
+
+   __vmx_vmwrite (VMCS_CTRL_PINBASED_CONTROLS, pinbased_ctl.ctl);
+   __vmx_vmwrite (VMCS_CTRL_PROCBASED_CTLS, procbased_ctl.ctl);
+   __vmx_vmwrite (VMCS_CTRL_PROCBASED_CTLS2, procbased_ctl2.ctl);
+
+   // no vm-exits on any exception
+   __vmx_vmwrite (VMCS_CTRL_EXCEPTION_BITMAP, 0);
+
+   __vmx_vmwrite (VMCS_CTRL_PAGE_FAULT_ERROR_CODE_MASK, 0);
+   __vmx_vmwrite (VMCS_CTRL_PAGE_FAULT_ERROR_CODE_MATCH, 0);
+
+   __vmx_vmwrite (VMCS_CTRL_CR3_TARGET_COUNT, 0);
 }
 
 __attribute__((warn_unused_result)) 
@@ -85,5 +128,7 @@ static int vmcs_setup_host (vcpu_ctx_t *vcpu_ctx)
 __attribute__((warn_unused_result)) 
 int vmcs_setup (vcpu_ctx_t *vcpu_ctx)
 {
+   vmcs_setup_control (vcpu_ctx);
+
    return 0;
 }

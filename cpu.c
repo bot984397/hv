@@ -28,6 +28,7 @@
 #define __read_cr0 read_cr0
 #define __write_cr0 write_cr0
 
+// MOVE THIS TO A DIFFERENT FILE //////////////////////////////////////////////
 typedef struct
 {
    u64 code;
@@ -80,6 +81,7 @@ static inline __attribute__((always_inline)) const char* get_vmx_error (void)
 {
    return get_vmx_error_message (__vmx_vmread (VMCS_RO_VM_INSTRUCTION_ERROR));
 }
+///////////////////////////////////////////////////////////////////////////////
 
 static int cpu_on_cb (unsigned int cpu)
 {
