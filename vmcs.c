@@ -293,42 +293,46 @@ static __vmx_procbased_ctls2 vmcs_setup_secondary_procbased_ctls (void)
    control.mode_based_ept_execute = false;
 
    /*
-    * true:
+    * true: EPT write permissions may be specified at 128 byte granularity
     */
    control.ept_sub_page_write_permissions = false;
 
    /*
-    * true:
+    * true: all output addresses used by Intel PT are treated as guest
+    *       physical addresses and translated using EPT
     */
    control.intel_pt_use_guest_phys_addr = false;
 
    /*
-    * true:
+    * true: RDTSC / RDTSCP / RDMSR from IA32_TIME_STAMP_COUNTER MSR return a
+    *       value modified by the TSC multiplier field
     */
    control.use_tsc_scaling = false;
 
    /*
-    * true:
+    * false: executions of TPAUSE / UMONITOR / UMWAIT cause a #UD
     */
    control.enable_user_wait_and_pause = false;
 
    /*
-    * true:
+    * false: executions of PCONFIG cause a #UD
     */
    control.enable_pconfig = false;
 
    /*
-    * true:
+    * true: executions of ENCLV consult the ENCLV-exiting bitmap to determine
+    *       wether the instruction causes a VM exit
     */
    control.enable_enclv_exiting = false;
 
    /*
-    * true:
+    * true: assertion of a bus lock causes a VM exit
     */
    control.vmm_bus_lock_detection = false;
 
    /*
-    * true:
+    * true: VM exit occurs if certain operations prevent the processor from
+    *       reaching an instruction boundary within a specified amount of time
     */
    control.instruction_timeout = false;
 
