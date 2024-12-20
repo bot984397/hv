@@ -3,6 +3,16 @@
 
 #define LKM_DEBUG
 
+#ifdef _KERNEL
+
+#include <ntddk.h>
+typedef UINT8 u8;
+typedef UINT16 u16;
+typedef UINT32 u32;
+typedef UINT64 u64;
+
+#else
+
 #ifdef LKM_DEBUG
 #define LOG_DBG(fmt, ...) \
    pr_info ("[lkm] %s: " fmt "\n", __FUNCTION__, ##__VA_ARGS__)
@@ -12,6 +22,8 @@
 
 #include <linux/types.h>
 #include <linux/atomic.h>
+
+#endif // _KERNEL
 
 #include "msr.h"
 
@@ -37,10 +49,23 @@ struct _vcpu_ctx_t
 
    struct
    {
-      u8 io_bitmap_a[4096];
+      unsigned char io_bitmap_a[4096];
+      u64 io_bitmap_a_physical;
+
       u8 io_bitmap_b[4096];
-      u8 msr_bitmap_a[4096];
-      u8 msr_bitmap_b[4096];
+      u64 io_bitmap_b_physical;
+
+      u8 msr_bitmap_r_low[4096];
+      u64 msr_bitmap_r_low_physical;
+
+      u8 msr_bitmap_r_high[4096];
+      u64 msr_bitmap_r_high_physical;
+
+      u8 msr_bitmap_w_low[4096];
+      u64 msr_bitmap_w_low_physical;
+
+      u8 msr_bitmap_w_high[4096];
+      u64 msr_bitmap_w_high_physical;
    } bitmaps;
 
    struct
@@ -51,7 +76,7 @@ struct _vcpu_ctx_t
 
 union _vm_region_t
 {
-   unsigned char data[4096];
+   u8 data[4096];
    struct
    {
       u32 rev_ident : 31;
