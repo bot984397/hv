@@ -20,10 +20,10 @@ static int __init lkm_init (void)
       return -EPERM;
    }
 
-   if (!vmm_alloc ())
+   if (vmm_alloc () == false)
    {
       cpu_hotplug_unregister ();
-      vmm_free (g_vmm_ctx);
+      vmm_free ();
       return -ENOMEM;
    }
 
@@ -32,7 +32,7 @@ static int __init lkm_init (void)
    {
       LOG_DBG ("one or more processors failed to enter vmx operation");
       cpu_hotplug_unregister ();
-      vmm_free (g_vmm_ctx);
+      vmm_free ();
       return -EPERM;
    }
 
@@ -48,7 +48,7 @@ static void __exit lkm_exit (void)
    on_each_cpu (vcpu_restore, NULL, true);
 
    cpu_hotplug_unregister ();
-   vmm_free (g_vmm_ctx);
+   vmm_free ();
    LOG_DBG ("hypervisor unloaded");
 }
 

@@ -29,7 +29,7 @@ typedef UINT64 u64;
 
 typedef struct _vmm_ctx_t vmm_ctx_t;
 typedef struct _vcpu_ctx_t vcpu_ctx_t;
-typedef union _vm_region_t vm_region_t;
+typedef struct _vm_region_t vm_region_t;
 
 struct _vmm_ctx_t 
 {
@@ -54,13 +54,13 @@ struct _vcpu_ctx_t
    struct
    {
       u8 *io_bitmap_a;
-      u64 io_bitmap_a_physical;
+      u64 io_bitmap_a_phys;
 
       u8 *io_bitmap_b;
-      u64 io_bitmap_b_physical;
+      u64 io_bitmap_b_phys;
 
       u8 *msr_bitmaps;
-      u64 msr_bitmaps_physical;
+      u64 msr_bitmaps_phys;
    } bitmaps;
 
    struct
@@ -72,15 +72,19 @@ struct _vcpu_ctx_t
    vcpu_ctx_t *blink;
 };
 
-union _vm_region_t
+struct _vm_region_t
 {
-   u8 data[4096];
-   struct
+   union
    {
-      u32 rev_ident : 31;
-      u32 reserved_0 : 1;
-      u32 abort_indicator;
-   } reserved;
+      u32 ctl;
+      struct
+      {
+         u32 rev_ident : 31;
+         u32 reserved_0 : 1;
+      };
+   } header;
+   u32 abort_indicator;
+   u8 data[4096 - sizeof (u64)];
 } __attribute__((packed));
 
 extern vmm_ctx_t *g_vmm_ctx;

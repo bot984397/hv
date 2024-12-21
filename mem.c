@@ -1,5 +1,3 @@
-// mem.c
-
 #include "mem.h"
 #include "common.h"
 
@@ -23,14 +21,33 @@ unsigned long mem_alloc_pages (unsigned int order)
    return page_addr;
 }
 
+void mem_free_pages_s (unsigned long page_addr, unsigned int order)
+{
+   if (!page_addr)
+   {
+      return;
+   }
+   mem_free_pages (page_addr, order);
+}
+
 void mem_free_pages (unsigned long page_addr, unsigned int order)
 {
    free_pages (page_addr, order);
+}
+
+void mem_zero_pages (void *page, unsigned int order)
+{
+   if (!page)
+   {
+      return;
+   }
+   for (int i = 0; i < (1 << order); i++)
+   {
+      clear_page (page + (i * PAGE_SIZE));
+   }
 }
 
 u64 mem_virt_to_phys (void *virt_addr)
 {
    return (u64)virt_to_phys (virt_addr);
 }
-
-// eof

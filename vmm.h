@@ -8,6 +8,6 @@
 
 bool vmm_alloc (void);
 
-void vmm_free (vmm_ctx_t *vmm_ctx);
+void vmm_free (void);
 
 #endif // __LKM_VMM_H__

@@ -5,7 +5,7 @@
 
 typedef union
 {
-   u64 value;
+   u64 ctl;
    struct
    {
       u64 locked                    : 1;
@@ -20,7 +20,7 @@ typedef union
       u64 reserved_2                : 1;
       u64 lmce_on                   : 1;
       u64 reserved_3                : 43;
-   } fields;
+   };
 } ia32_feature_control_t;
 #define IA32_FEATURE_CONTROL_MSR 0x03A
 
@@ -74,7 +74,7 @@ typedef union
 
 typedef union
 {
-   u64 value;
+   u64 ctl;
    struct
    {
       u64 low;

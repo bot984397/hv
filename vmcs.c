@@ -5,6 +5,7 @@
 #include "asm.h"
 #include "msr.h"
 #include "enc.h"
+#include "mem.h"
 #include "common.h"
 
 static void vmcs_adjust_controls (u32 *ctl, u32 cap)
@@ -610,13 +611,24 @@ static void vmcs_setup_control (vcpu_ctx_t *vcpu_ctx)
          : IA32_VMX_TRUE_ENTRY_CTLS_MSR);
    __vmx_vmwrite (VMCS_CTRL_VMENTRY_CONTROLS, entry_ctl.ctl);
 
+   // exception bitmap
    exception_bitmap = vmcs_setup_exception_bitmap ();
    __vmx_vmwrite (VMCS_CTRL_EXCEPTION_BITMAP, exception_bitmap.ctl);
+
+   // I/O bitmap addresses
+   mem_zero_pages (vcpu_ctx->bitmaps.io_bitmap_a, 0);
+   __vmx_vmwrite (VMCS_CTRL_IO_BITMAP_A, vcpu_ctx->bitmaps.io_bitmap_a_phys);
+   mem_zero_pages (vcpu_ctx->bitmaps.io_bitmap_b, 0);
+   __vmx_vmwrite (VMCS_CTRL_IO_BITMAP_B, vcpu_ctx->bitmaps.io_bitmap_b_phys);
+
+   mem_zero_pages (vcpu_ctx->bitmaps.io_bitmap_b, 0);
 
    __vmx_vmwrite (VMCS_CTRL_PAGE_FAULT_ERROR_CODE_MASK, 0);
    __vmx_vmwrite (VMCS_CTRL_PAGE_FAULT_ERROR_CODE_MATCH, 0);
 
    __vmx_vmwrite (VMCS_CTRL_CR3_TARGET_COUNT, 0);
+
+   __vmx_vmwrite (VMCS_CTRL_VIRTUAL_PROCESSOR_IDENTIFIER, 0);
 }
 
 static void vmcs_setup_guest (vcpu_ctx_t *vcpu_ctx)
@@ -630,11 +642,20 @@ static void vmcs_setup_host (vcpu_ctx_t *vcpu_ctx)
 __attribute__((warn_unused_result)) 
 int vmcs_setup (vcpu_ctx_t *vcpu_ctx)
 {
+   if (__vmx_vmclear (vcpu_ctx->vmcs_physical) != 0)
+   {
+      return 0;
+   }
+   if (__vmx_vmptrld (vcpu_ctx->vmcs_physical) != 0)
+   {
+      return 0;
+   }
+
    vmcs_setup_control (vcpu_ctx);
    
    vmcs_setup_guest (vcpu_ctx);
 
    vmcs_setup_host (vcpu_ctx);
 
-   return 0;
+   return 1;
 }

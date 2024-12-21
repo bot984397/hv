@@ -16,47 +16,11 @@
 
 static int cpu_on_cb (unsigned int cpu)
 {
-   /*
-   vcpu_ctx_t *list_head = g_vmm_ctx->vcpu_ctx_ll;
-   while (list_head->flink)
-   {
-      list_head = list_head->flink;
-   }
-
-   vcpu_ctx_t *vcpu_ctx = vcpu_alloc ();
-   if (vcpu_ctx == NULL)
-   {
-      // tear down hypervisor
-      return 0;
-   }
-
-   list_head->flink = vcpu_ctx;
-   vcpu_ctx->blink = list_head;
-
-   g_vmm_ctx->vcpu_max = g_vmm_ctx->vcpu_max + 1;
-   vcpu_init (NULL);
-   if (atomic_read (&g_vmm_ctx->vcpu_init) != g_vmm_ctx->vcpu_max)
-   {
-      // tear down hypervisor
-   }
-   */
-   
    return 0;
 }
 
 static int cpu_off_cb (unsigned int cpu)
 {
-   /*
-   vcpu_ctx_t *vcpu_ctx = vcpu_ctx_from_cpu_num (cpu);
-   if (vcpu_ctx == NULL)
-   {
-      return 0;
-   }
-
-   vcpu_free (vcpu_ctx);
-   vcpu_teardown (vcpu_ctx);
-   */
-
    return 0;
 }
 
@@ -104,5 +68,5 @@ void cpu_hotplug_unregister (void)
    unregister_cpu_notifier (&cpu_hotplug_notifier);
 #else
    cpuhp_remove_state_nocalls (CPUHP_AP_ONLINE_DYN);
-#endif
+#endif // OLD_CPUHOTPLUG
 }

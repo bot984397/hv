@@ -106,90 +106,57 @@ bool vcpu_supports_vmx (void)
 }
 
 static __attribute__((warn_unused_result))
-int vcpu_set_feature_control (void)
-{
-   ia32_feature_control_t feat_ctl = {0};
-   feat_ctl.value = __rdmsr (IA32_FEATURE_CONTROL_MSR);
-   
-   if (feat_ctl.fields.locked == 1 && feat_ctl.fields.vmx_outside_smx == 0)
-   {
-      VCPU_DBG ("vmx operation disabled by BIOS / UEFI firmware");
-      return 0;
-   }
-
-   if (feat_ctl.fields.locked == 1 && feat_ctl.fields.vmx_outside_smx == 1)
-   {
-      VCPU_DBG ("vmx operation enabled by BIOS / UEFI firmware");
-      return 1;
-   }
-
-   feat_ctl.fields.locked = 1;
-   feat_ctl.fields.vmx_outside_smx = 1;
-   __wrmsr (IA32_FEATURE_CONTROL_MSR, (feat_ctl.value >> 32), feat_ctl.value);
-
-   // sanity check
-   feat_ctl.value = __rdmsr (IA32_FEATURE_CONTROL_MSR);
-   return feat_ctl.fields.locked == 1 && feat_ctl.fields.vmx_outside_smx == 1;
-}
-
-static void vcpu_set_cr_fixed (void)
+bool vcpu_enable_vmx (void)
 {
    cr0_t cr0 = {0};
    cr4_t cr4 = {0};
+   ia32_feature_control_t feat_ctl = {0};
    ia32_gen_fixed_t fixed = {0};
+
+   
+   feat_ctl.ctl = __rdmsr (IA32_FEATURE_CONTROL_MSR);
+   if (feat_ctl.locked == 1 && feat_ctl.vmx_outside_smx == 0)
+   {
+      return false;
+   }
+
+   if (feat_ctl.locked == 0)
+   {
+      feat_ctl.locked = 1;
+      feat_ctl.vmx_outside_smx = 1;
+      __wrmsr (IA32_FEATURE_CONTROL_MSR, (feat_ctl.ctl >> 32), feat_ctl.ctl);
+   }
 
    cr4.value = __read_cr4 ();
    cr4.flags.VMXE = 1;
    __write_cr4 (cr4.value);
 
+   cr4.value = __read_cr4 ();
+   fixed.ctl = __rdmsr (IA32_VMX_CR4_FIXED0_MSR);
+   cr4.value |= fixed.split.low;
+   fixed.ctl = __rdmsr (IA32_VMX_CR4_FIXED1_MSR);
+   cr4.value &= fixed.split.low;
+   __write_cr4 (cr4.value);
+
    cr0.value = __read_cr0 ();
-   fixed.value = __rdmsr (IA32_VMX_CR0_FIXED0_MSR);
+   fixed.ctl = __rdmsr (IA32_VMX_CR0_FIXED0_MSR);
    cr0.value |= fixed.split.low;
-   fixed.value = __rdmsr (IA32_VMX_CR0_FIXED1_MSR);
+   fixed.ctl = __rdmsr (IA32_VMX_CR0_FIXED1_MSR);
    cr0.value &= fixed.split.low;
    __write_cr0 (cr0.value);
 
-   cr4.value = __read_cr4 ();
-   fixed.value = __rdmsr (IA32_VMX_CR4_FIXED0_MSR);
-   cr4.value |= fixed.split.low;
-   fixed.value = __rdmsr (IA32_VMX_CR4_FIXED1_MSR);
-   cr4.value &= fixed.split.low;
-   __write_cr4 (cr4.value);
-}
-
-static __attribute__((warn_unused_result))
-int vcpu_setup_vmcs (vcpu_ctx_t *vcpu_ctx)
-{
-   if (__vmx_vmclear (vcpu_ctx->vmcs_physical) != 0)
-   {
-      VCPU_DBG ("%s", get_vmx_error ());
-      return 0;
-   }
-   if (__vmx_vmptrld (vcpu_ctx->vmcs_physical) != 0)
-   {
-      VCPU_DBG ("%s", get_vmx_error ());
-      return 0;
-   }
-
-   int status = __vmx_vmlaunch ();
-   if (status != 0)
-   {
-      VCPU_DBG ("%s", get_vmx_error ());
-      return 0;
-   }
-
-   return 1;
+   return true;
 }
 
 static inline __attribute__((always_inline)) 
 void vcpu_set_rev_ident (vcpu_ctx_t *vcpu_ctx)
 {
-   vcpu_ctx->vmxon_region->reserved.rev_ident =
+   vcpu_ctx->vmxon_region->header.rev_ident =
       vcpu_ctx->cached.vmx_basic.fields.vmcs_rev_ident;
-   vcpu_ctx->vmxon_region->reserved.reserved_0 = 0;
-   vcpu_ctx->vmcs_region->reserved.rev_ident =
+   vcpu_ctx->vmxon_region->header.reserved_0 = 0;
+   vcpu_ctx->vmcs_region->header.rev_ident =
       vcpu_ctx->cached.vmx_basic.fields.vmcs_rev_ident;
-   vcpu_ctx->vmcs_region->reserved.reserved_0 = 0;
+   vcpu_ctx->vmcs_region->header.reserved_0 = 0;
 }
 
 __attribute__((warn_unused_result)) vcpu_ctx_t* vcpu_alloc (void)
@@ -221,7 +188,7 @@ __attribute__((warn_unused_result)) vcpu_ctx_t* vcpu_alloc (void)
    {
       goto FAILURE;
    }
-   vcpu_ctx->bitmaps.io_bitmap_a_physical 
+   vcpu_ctx->bitmaps.io_bitmap_a_phys
       = mem_virt_to_phys (vcpu_ctx->bitmaps.io_bitmap_a);
 
    vcpu_ctx->bitmaps.io_bitmap_b = (u8 *)mem_alloc_pages (0);
@@ -229,7 +196,7 @@ __attribute__((warn_unused_result)) vcpu_ctx_t* vcpu_alloc (void)
    {
       goto FAILURE;
    }
-   vcpu_ctx->bitmaps.io_bitmap_b_physical
+   vcpu_ctx->bitmaps.io_bitmap_b_phys
       = mem_virt_to_phys (vcpu_ctx->bitmaps.io_bitmap_b);
 
    vcpu_ctx->bitmaps.msr_bitmaps = (u8 *)mem_alloc_pages (0);
@@ -237,12 +204,12 @@ __attribute__((warn_unused_result)) vcpu_ctx_t* vcpu_alloc (void)
    {
       goto FAILURE;
    }
-   vcpu_ctx->bitmaps.msr_bitmaps_physical
+   vcpu_ctx->bitmaps.msr_bitmaps_phys
       = mem_virt_to_phys (vcpu_ctx->bitmaps.msr_bitmaps);
 
    vcpu_ctx->cached.vmx_basic.value = __rdmsr (IA32_VMX_BASIC_MSR);
    vcpu_set_rev_ident (vcpu_ctx);
-   
+
    return vcpu_ctx;
 
 FAILURE:
@@ -275,21 +242,23 @@ FAILURE:
 
 void vcpu_free (vcpu_ctx_t *vcpu_ctx)
 {
-   if (vcpu_ctx->vmxon_region)
+   if (!vcpu_ctx)
    {
-      mem_free_pages ((unsigned long)vcpu_ctx->vmxon_region, 0);
+      return;
    }
-   if (vcpu_ctx->vmcs_region)
-   {
-      mem_free_pages ((unsigned long)vcpu_ctx->vmcs_region, 0);
-   }
+
+   mem_free_pages_s ((unsigned long)vcpu_ctx->vmxon_region, 0);
+   mem_free_pages_s ((unsigned long)vcpu_ctx->vmcs_region, 0);
+   
+   mem_free_pages_s ((unsigned long)vcpu_ctx->bitmaps.io_bitmap_a, 0);
+   mem_free_pages_s ((unsigned long)vcpu_ctx->bitmaps.io_bitmap_b, 0);
+   mem_free_pages_s ((unsigned long)vcpu_ctx->bitmaps.msr_bitmaps, 0);
 
    kfree (vcpu_ctx);
 }
 
 void vcpu_init (void *info)
 {
-   vmm_ctx_t *vmm_ctx = (vmm_ctx_t *)info;
    int this_cpu = cur_logical_cpu ();
    
    if (!vcpu_supports_vmx ())
@@ -298,15 +267,13 @@ void vcpu_init (void *info)
       return;
    }
 
-   if (!vcpu_set_feature_control ())
+   if (!vcpu_enable_vmx ())
    {
-      VCPU_DBG ("failed to set IA32_FEATURE_CONTROL msr");
+      VCPU_DBG ("failed to enable vmx operations");
       return;
    }
 
-   vcpu_set_cr_fixed ();
-
-   vcpu_ctx_t *vcpu_ctx = vmm_ctx->vcpu_ctxs[this_cpu]; 
+   vcpu_ctx_t *vcpu_ctx = g_vmm_ctx->vcpu_ctxs[this_cpu]; 
    int err = __vmx_on (vcpu_ctx->vmxon_physical);
    if (err != 0)
    {
@@ -315,14 +282,12 @@ void vcpu_init (void *info)
    }
    VCPU_DBG ("[vmxon] executed successfully");
 
-   if (!vcpu_setup_vmcs (vcpu_ctx))
+   if (!vmcs_setup (vcpu_ctx))
    {
-      VCPU_DBG ("failed to set up vmcs region");
-      __vmx_off ();
       return;
    }
 
-   atomic_inc (&vmm_ctx->vcpu_init);
+   atomic_inc (&g_vmm_ctx->vcpu_init);
 }
 
 void vcpu_restore (void *info)
