@@ -6,8 +6,10 @@
 #include "cpu.h"
 #include "msr.h"
 #include "vmcs.h"
+#include "common.h"
+#include "hotplug.h"
 
-vmm_ctx_t *vmm_ctx;
+vmm_ctx_t *g_vmm_ctx;
 
 static int __init lkm_init (void)
 {
@@ -15,22 +17,22 @@ static int __init lkm_init (void)
 
    if (!cpu_hotplug_register ())
    {
-      return -ENOMEM;
+      return -EPERM;
    }
 
-   vmm_ctx = vmm_init ();
-   if (vmm_ctx == NULL)
+   if (!vmm_alloc ())
    {
       cpu_hotplug_unregister ();
+      vmm_free (g_vmm_ctx);
       return -ENOMEM;
    }
 
-   on_each_cpu (vcpu_init, (void *)vmm_ctx, true);
-   if (vmm_ctx->vcpu_max != atomic_read (&vmm_ctx->vcpu_init))
+   on_each_cpu (vcpu_init, (void *)g_vmm_ctx, true);
+   if (g_vmm_ctx->vcpu_max != atomic_read (&g_vmm_ctx->vcpu_init))
    {
       LOG_DBG ("one or more processors failed to enter vmx operation");
       cpu_hotplug_unregister ();
-      vmm_free (vmm_ctx);
+      vmm_free (g_vmm_ctx);
       return -EPERM;
    }
 
@@ -46,7 +48,7 @@ static void __exit lkm_exit (void)
    on_each_cpu (vcpu_restore, NULL, true);
 
    cpu_hotplug_unregister ();
-   vmm_free (vmm_ctx);
+   vmm_free (g_vmm_ctx);
    LOG_DBG ("hypervisor unloaded");
 }
 

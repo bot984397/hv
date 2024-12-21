@@ -36,11 +36,14 @@ struct _vmm_ctx_t
    int vcpu_max;
    atomic_t vcpu_init;
    vcpu_ctx_t **vcpu_ctxs;
+
+   vcpu_ctx_t *vcpu_ctx_ll;
 };
 
 struct _vcpu_ctx_t 
 {
    vmm_ctx_t *vmm_ctx;
+   u32 cpu_num;
 
    vm_region_t *vmxon_region;
    u64 vmxon_physical;
@@ -64,6 +67,9 @@ struct _vcpu_ctx_t
    {
       ia32_vmx_basic_t vmx_basic;
    } cached;
+
+   vcpu_ctx_t *flink;
+   vcpu_ctx_t *blink;
 };
 
 union _vm_region_t
@@ -76,5 +82,7 @@ union _vm_region_t
       u32 abort_indicator;
    } reserved;
 } __attribute__((packed));
+
+extern vmm_ctx_t *g_vmm_ctx;
 
 #endif // __LKM_COMMON_H__

@@ -1,5 +1,3 @@
-#define OLD_CPUHOTPLUG (LINUX_VERSION_CODE <= KERNEL_VERSION(4,8,0))
-
 #define VCPU_DBG(fmt, ...) \
    LOG_DBG ("cpu %02d - " fmt, cur_logical_cpu (), ##__VA_ARGS__)
 
@@ -7,12 +5,6 @@
 #include <linux/smp.h>
 #include <linux/slab.h>
 #include <linux/version.h>
-#if OLD_CPUHOTPLUG
-#include <linux/cpu.h>
-#include <linux/notifier.h>
-#else
-#include <linux/cpuhotplug.h>
-#endif // OLD_CPUHOTPLUG
 #include <asm/special_insns.h>
 #include <asm/cpufeature.h>
 
@@ -23,6 +15,7 @@
 #include "asm.h"
 #include "enc.h"
 #include "vmcs.h"
+#include "common.h"
 
 // linux kernel devs try to maintain consistency challenge: impossible
 #define __read_cr0 read_cr0
@@ -81,71 +74,19 @@ static inline __attribute__((always_inline)) const char* get_vmx_error (void)
 {
    return get_vmx_error_message (__vmx_vmread (VMCS_RO_VM_INSTRUCTION_ERROR));
 }
-///////////////////////////////////////////////////////////////////////////////
 
-static int cpu_on_cb (unsigned int cpu)
+vcpu_ctx_t* vcpu_ctx_from_cpu_num (u32 cpu_num)
 {
-   // virtualize new vcpu
-   return 0;
-}
-
-static int cpu_off_cb (unsigned int cpu)
-{
-   // restore vcpu and free data
-   return 0;
-}
-
-#if OLD_CPUHOTPLUG
-static int cpu_hotplug_cb (struct notifier_block *nblock, 
-                           unsigned long action,
-                           void *hcpu)
-{
-   switch (action)
+   vcpu_ctx_t *vcpu_ctx = g_vmm_ctx->vcpu_ctx_ll;
+   while (vcpu_ctx)
    {
-      case CPU_ONLINE:
-         cpu_on_cb ((unsigned int)(unsigned long)hcpu);
-         break;
-      case CPU_OFFLINE:
-         cpu_off_cb ((unsigned int)(unsigned long)hcpu);
-         break;
+      if (vcpu_ctx->cpu_num == cpu_num)
+      {
+         return vcpu_ctx;
+      }
+      vcpu_ctx = vcpu_ctx->flink;
    }
-   return NOTIFY_OK;
-}
-
-struct notifier_block cpu_hotplug_notifier = {
-   .notifier_call = cpu_hotplug_cb,
-   .flags = NOTIFY_INIT_CALL_MASK
-};
-#endif // OLD_CPUHOTPLUG
-
-int cpu_hotplug_register (void)
-{
-   int ret = 1;
-#if OLD_CPUHOTPLUG
-   register_cpu_notifier (&cpu_hotplug_notifier);
-#else
-   ret = cpuhp_setup_state_nocalls (CPUHP_AP_ONLINE_DYN,
-                                    "cpuhp:online",
-                                    cpu_on_cb,
-                                    cpu_off_cb);
-   if (ret < 0)
-   {
-      LOG_DBG ("failed to register cpu hotplug callback");
-      return 0;
-   }
-#endif // OLD_CPUHOTPLUG
-   LOG_DBG ("registered cpu hotplug callback");
-   return ret;
-}
-
-void cpu_hotplug_unregister (void)
-{
-#if OLD_CPUHOTPLUG
-   unregister_cpu_notifier (&cpu_hotplug_notifier);
-#else
-   cpuhp_remove_state_nocalls (CPUHP_AP_ONLINE_DYN); 
-#endif // OLD_CPUHOTPLUG
-   LOG_DBG ("unregistered cpu hotplug callback");
+   return NULL;
 }
 
 int max_logical_cpu (void)

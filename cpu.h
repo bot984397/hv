@@ -4,8 +4,7 @@
 #include "common.h"
 #include "vmm.h"
 
-int cpu_hotplug_register (void);
-void cpu_hotplug_unregister (void);
+vcpu_ctx_t* vcpu_ctx_from_cpu_num (u32 cpu_num);
 
 int max_logical_cpu (void);
 int cur_logical_cpu (void);

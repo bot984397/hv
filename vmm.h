@@ -6,8 +6,7 @@
 
 #include "cpu.h"
 
-vmm_ctx_t* vmm_alloc (void);
-vmm_ctx_t* vmm_init (void);
+bool vmm_alloc (void);
 
 void vmm_free (vmm_ctx_t *vmm_ctx);
 

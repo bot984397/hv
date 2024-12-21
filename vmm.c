@@ -5,70 +5,58 @@
 #include "mem.h"
 #include "common.h"
 
-vmm_ctx_t* vmm_alloc (void)
+bool vmm_alloc (void)
 {
-   vmm_ctx_t *vmm_ctx = kmalloc (sizeof (vmm_ctx_t), GFP_KERNEL);
-   if (vmm_ctx == NULL)
+   g_vmm_ctx = kmalloc (sizeof (vmm_ctx_t), GFP_KERNEL);
+   if (g_vmm_ctx == NULL)
    {
       LOG_DBG ("failed to allocate vmm_ctx\n");
-      return NULL;
+      return false;
    }
 
-   vmm_ctx->vcpu_max = max_logical_cpu ();
-   atomic_set (&vmm_ctx->vcpu_init, 0);
+   g_vmm_ctx->vcpu_max = max_logical_cpu ();
+   atomic_set (&g_vmm_ctx->vcpu_init, 0);
 
-   vmm_ctx->vcpu_ctxs = 
-      kmalloc (sizeof (vcpu_ctx_t *) * vmm_ctx->vcpu_max, GFP_KERNEL);
-   if (vmm_ctx->vcpu_ctxs == NULL)
+   g_vmm_ctx->vcpu_ctxs 
+      = kmalloc (sizeof (vcpu_ctx_t *) * g_vmm_ctx->vcpu_max, GFP_KERNEL);
+   if (g_vmm_ctx->vcpu_ctxs == NULL)
    {
-      LOG_DBG ("failed to allocate vcpu_ctxs\n");
-      kfree (vmm_ctx);
-      return NULL;
+      return false;
    }
 
-   for (int i = 0; i < vmm_ctx->vcpu_max; i++)
+   for (int i = 0; i < g_vmm_ctx->vcpu_max; i++)
    {
-      vmm_ctx->vcpu_ctxs[i] = vcpu_alloc ();
-      if (vmm_ctx->vcpu_ctxs[i] == NULL)
+      g_vmm_ctx->vcpu_ctxs[i] = vcpu_alloc ();
+      if (g_vmm_ctx->vcpu_ctxs[i] == NULL)
       {
-         return NULL;
+         return false;
       }
-   }
-   
-   return vmm_ctx;
-}
 
-vmm_ctx_t* vmm_init (void)
-{
-   vmm_ctx_t *vmm_ctx = kmalloc (sizeof (vmm_ctx_t), GFP_KERNEL);
-   if (vmm_ctx == NULL)
-   {
-      LOG_DBG ("failed to allocate vmm_ctx\n");
-      return NULL;
-   }
-
-   vmm_ctx->vcpu_max = max_logical_cpu ();
-   atomic_set (&vmm_ctx->vcpu_init, 0);
-
-   vmm_ctx->vcpu_ctxs = kmalloc (sizeof (vcpu_ctx_t *) * vmm_ctx->vcpu_max, 
-                                 GFP_KERNEL);
-   if (vmm_ctx->vcpu_ctxs == NULL)
-   {
-      LOG_DBG ("failed to allocate vcpu context array\n");
-      kfree (vmm_ctx);
-      return NULL;
-   }
-
-   for (int i = 0; i < vmm_ctx->vcpu_max; i++)
-   {
-      vmm_ctx->vcpu_ctxs[i] = vcpu_alloc ();
-      if (vmm_ctx->vcpu_ctxs[i] == NULL)
+      /*
+      vcpu_ctx_t *vcpu_ctx = vcpu_alloc ();
+      if (vcpu_ctx == NULL)
       {
-         return NULL;
+         return false;
       }
-   }
+      vcpu_ctx->cpu_num = i;
 
-   return vmm_ctx;
+      vcpu_ctx_t *list_head = g_vmm_ctx->vcpu_ctx_ll;
+      if (!list_head)
+      {
+         list_head = vcpu_ctx;
+      }
+      else
+      {
+         while (list_head->flink)
+         {
+            list_head = list_head->flink;
+         }
+         list_head->flink = vcpu_ctx;
+         vcpu_ctx->blink = list_head;
+      }
+      */
+   }
+   return true;
 }
 
 void vmm_free (vmm_ctx_t *vmm_ctx)
