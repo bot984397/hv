@@ -199,7 +199,7 @@ __attribute__((warn_unused_result)) vcpu_ctx_t* vcpu_alloc (void)
    vcpu_ctx->bitmaps.io_bitmap_b_phys
       = mem_virt_to_phys (vcpu_ctx->bitmaps.io_bitmap_b);
 
-   vcpu_ctx->bitmaps.msr_bitmaps = (u8 *)mem_alloc_pages (0);
+   vcpu_ctx->bitmaps.msr_bitmaps = (u8 *)mem_alloc_pages (2);
    if (vcpu_ctx->bitmaps.msr_bitmaps == NULL)
    {
       goto FAILURE;
@@ -231,7 +231,7 @@ FAILURE:
    }
    if (vcpu_ctx->bitmaps.msr_bitmaps)
    {
-      mem_free_pages ((unsigned long)vcpu_ctx->bitmaps.msr_bitmaps, 0);
+      mem_free_pages ((unsigned long)vcpu_ctx->bitmaps.msr_bitmaps, 2);
    }
    if (vcpu_ctx)
    {
@@ -252,7 +252,7 @@ void vcpu_free (vcpu_ctx_t *vcpu_ctx)
    
    mem_free_pages_s ((unsigned long)vcpu_ctx->bitmaps.io_bitmap_a, 0);
    mem_free_pages_s ((unsigned long)vcpu_ctx->bitmaps.io_bitmap_b, 0);
-   mem_free_pages_s ((unsigned long)vcpu_ctx->bitmaps.msr_bitmaps, 0);
+   mem_free_pages_s ((unsigned long)vcpu_ctx->bitmaps.msr_bitmaps, 2);
 
    kfree (vcpu_ctx);
 }

@@ -621,14 +621,111 @@ static void vmcs_setup_control (vcpu_ctx_t *vcpu_ctx)
    mem_zero_pages (vcpu_ctx->bitmaps.io_bitmap_b, 0);
    __vmx_vmwrite (VMCS_CTRL_IO_BITMAP_B, vcpu_ctx->bitmaps.io_bitmap_b_phys);
 
-   mem_zero_pages (vcpu_ctx->bitmaps.io_bitmap_b, 0);
+   // Time-Stamp Counter offset and multiplier
+   __vmx_vmwrite (VMCS_CTRL_TSC_OFFSET, 0);
+   __vmx_vmwrite (VMCS_CTRL_TSC_MULTIPLIER, 0);
 
-   __vmx_vmwrite (VMCS_CTRL_PAGE_FAULT_ERROR_CODE_MASK, 0);
-   __vmx_vmwrite (VMCS_CTRL_PAGE_FAULT_ERROR_CODE_MATCH, 0);
+   // CR0 and CR4 shadowing / guest-host masks
+   __vmx_vmwrite (VMCS_CTRL_CR0_GUEST_HOST_MASK, 0);
+   __vmx_vmwrite (VMCS_CTRL_CR4_GUEST_HOST_MASK, 0);
+   __vmx_vmwrite (VMCS_CTRL_CR0_READ_SHADOW, 0);
+   __vmx_vmwrite (VMCS_CTRL_CR4_READ_SHADOW, 0);
 
+   // CR3 target count and values
    __vmx_vmwrite (VMCS_CTRL_CR3_TARGET_COUNT, 0);
+   __vmx_vmwrite (VMCS_CTRL_CR3_TARGET_VALUE_0, 0);
+   __vmx_vmwrite (VMCS_CTRL_CR3_TARGET_VALUE_1, 0);
+   __vmx_vmwrite (VMCS_CTRL_CR3_TARGET_VALUE_2, 0);
+   __vmx_vmwrite (VMCS_CTRL_CR3_TARGET_VALUE_3, 0);
 
-   __vmx_vmwrite (VMCS_CTRL_VIRTUAL_PROCESSOR_IDENTIFIER, 0);
+   // APIC virtualization controls
+   __vmx_vmwrite (VMCS_CTRL_APIC_ACCESS_ADDRESS, 0);
+   __vmx_vmwrite (VMCS_CTRL_VIRTUAL_APIC_ADDRESS, 0);
+   __vmx_vmwrite (VMCS_CTRL_TPR_THRESHOLD, 0);
+   __vmx_vmwrite (VMCS_CTRL_EOI_EXIT_BITMAP_0, 0);
+   __vmx_vmwrite (VMCS_CTRL_EOI_EXIT_BITMAP_1, 0);
+   __vmx_vmwrite (VMCS_CTRL_EOI_EXIT_BITMAP_2, 0);
+   __vmx_vmwrite (VMCS_CTRL_EOI_EXIT_BITMAP_3, 0);
+   __vmx_vmwrite (VMCS_CTRL_POSTED_INTERRUPT_NOTIFICATION_VECTOR, 0);
+   __vmx_vmwrite (VMCS_CTRL_POSTED_INTERRUPT_DESCRIPTOR_ADDRESS, 0);
+   __vmx_vmwrite (VMCS_CTRL_PID_POINTER_TABLE_ADDRESS, 0);
+   __vmx_vmwrite (VMCS_CTRL_LAST_PID_POINTER_INDEX, 0);
+
+   // MSR bitmap address
+   mem_zero_pages (vcpu_ctx->bitmaps.msr_bitmaps, 2);
+   __vmx_vmwrite (VMCS_CTRL_MSR_BITMAPS, vcpu_ctx->bitmaps.msr_bitmaps_phys);
+
+   // Executive-VMCS pointer
+   __vmx_vmwrite (VMCS_CTRL_EXECUTIVE_VMCS_POINTER, U64_MAX);
+
+   // Extended-Page-Table Pointer (EPTP)
+   __vmx_vmwrite (VMCS_CTRL_EPT_POINTER, 0);
+
+   // Virtual-Processor Identifier (VPID)
+   __vmx_vmwrite (VMCS_CTRL_VIRTUAL_PROCESSOR_IDENTIFIER, 1);
+
+   // Controls for PAUSE-Loop exiting
+   __vmx_vmwrite (VMCS_CTRL_PLE_GAP, 0);
+   __vmx_vmwrite (VMCS_CTRL_PLE_WINDOW, 0);
+
+   // VM-Function Controls
+   // TODO: implement vmcs_setup_vmfunc_ctls
+   __vmx_vmwrite (VMCS_CTRL_VM_FUNCTION_CONTROLS, 0);
+   __vmx_vmwrite (VMCS_CTRL_EPTP_LIST_ADDRESS, 0);
+
+   // VMCS Shadowing Bitmap Addresses
+   __vmx_vmwrite (VMCS_CTRL_VMREAD_BITMAP_ADDRESS, 0);
+   __vmx_vmwrite (VMCS_CTRL_VMWRITE_BITMAP_ADDRESS, 0);
+
+   // ENCLS-Exiting Bitmap
+   __vmx_vmwrite (VMCS_CTRL_ENCLS_EXITING_BITMAP, 0);
+
+   // ENCLV-Exiting Bitmap
+   __vmx_vmwrite (VMCS_CTRL_ENCLV_EXITING_BITMAP, 0);
+
+   // PCONFIG-Exiting Bitmap
+   __vmx_vmwrite (VMCS_CTRL_PCONFIG_EXITING_BITMAP, 0);
+
+   // Control Field for Page-Modification logging
+   __vmx_vmwrite (VMCS_CTRL_PML_ADDRESS, 0);
+
+   // Controls for Virtualization Exceptions
+   __vmx_vmwrite (VMCS_CTRL_VIRT_EXCEPTION_INFORMATION_ADDRESS, 0);
+   __vmx_vmwrite (VMCS_CTRL_EPTP_INDEX, 0);
+
+   // XSS-Exiting Bitmap
+   __vmx_vmwrite (VMCS_CTRL_XSS_EXITING_BITMAP, 0);
+
+   // Sub-Page-Permission-Table Pointer (SPPTP)
+   __vmx_vmwrite (VMCS_CTRL_SUB_PAGE_PERMISSION_TABLE_POINTER, 0);
+
+   // HLAT related fields
+   __vmx_vmwrite (VMCS_CTRL_HLATP, 0);
+
+   // PASID translation related fields
+   __vmx_vmwrite (VMCS_CTRL_LOW_PASID_DIRECTORY_ADDRESS, 0);
+   __vmx_vmwrite (VMCS_CTRL_HIGH_PASID_DIRECTORY_ADDRESS, 0);
+
+   // Instruction-Timeout Control
+   __vmx_vmwrite (VMCS_CTRL_INSTRUCTION_TIMEOUT_CONTROL, 0);
+
+   // IA32_SPEC_CTRL MSR virtualization controls
+   __vmx_vmwrite (VMCS_CTRL_IA32_SPEC_CTRL_MASK, 0);
+   __vmx_vmwrite (VMCS_CTRL_IA32_SPEC_CTRL_SHADOW, 0);
+
+   // VM-Exit controls
+
+   // VM-Exit controls for MSRs
+   __vmx_vmwrite (VMCS_CTRL_VMEXIT_MSR_STORE_COUNT, 0);
+   __vmx_vmwrite (VMCS_CTRL_VMEXIT_MSR_STORE_ADDRESS, 0);
+   __vmx_vmwrite (VMCS_CTRL_VMEXIT_MSR_LOAD_COUNT, 0);
+   __vmx_vmwrite (VMCS_CTRL_VMEXIT_MSR_LOAD_ADDRESS, 0);
+
+   // VM-Entry controls
+
+   // VM-Entry controls for MSRs
+   __vmx_vmwrite (VMCS_CTRL_VMENTRY_MSR_LOAD_COUNT, 0);
+   __vmx_vmwrite (VMCS_CTRL_VMENTRY_MSR_LOAD_ADDRESS, 0);
 }
 
 static void vmcs_setup_guest (vcpu_ctx_t *vcpu_ctx)
@@ -656,6 +753,12 @@ int vmcs_setup (vcpu_ctx_t *vcpu_ctx)
    vmcs_setup_guest (vcpu_ctx);
 
    vmcs_setup_host (vcpu_ctx);
+
+   int status = __vmx_vmlaunch ();
+   if (status != 0)
+   {
+      LOG_DBG ("%llu", __vmx_vmread (VMCS_RO_VM_INSTRUCTION_ERROR));
+   }
 
    return 1;
 }
