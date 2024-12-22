@@ -46,31 +46,70 @@ typedef union
 
 typedef union
 {
-   u32 value;
+   u64 value;
    struct
    {
-      u32 LBR                    : 1;
-      u32 BTF                    : 1;
-      u32 BLD                    : 1;
-      u32 reserved_0             : 3;
-      u32 TR                     : 1;
-      u32 BTS                    : 1;
-      u32 BTINT                  : 1;
-      u32 BTS_OFF_OS             : 1;
-      u32 BTS_OFF_USR            : 1;
-      u32 FREEZE_LBRS_ON_PMI     : 1;
-      u32 FREEZE_PERFMON_ON_PMI  : 1;
-      u32 reserved_1             : 1;
-      u32 FREEZE_WHILE_SMM       : 1;
-      u32 RTM                    : 1;
-      u32 reserved_2             : 16;
+      u64 SCE        : 1;
+      u64 reserved_0 : 7;
+      u64 LME        : 1;
+      u64 reserved_1 : 1;
+      u64 LMA        : 1;
+      u64 NXE        : 1;
+      u64 reserved_2 : 52;
+   } fields;
+} ia32_efer_t;
+#define IA32_EFER_MSR 0xC0000080
+
+typedef union
+{
+   u64 value;
+   struct
+   {
+      u64 LBR                    : 1;
+      u64 BTF                    : 1;
+      u64 BLD                    : 1;
+      u64 reserved_0             : 3;
+      u64 TR                     : 1;
+      u64 BTS                    : 1;
+      u64 BTINT                  : 1;
+      u64 BTS_OFF_OS             : 1;
+      u64 BTS_OFF_USR            : 1;
+      u64 FREEZE_LBRS_ON_PMI     : 1;
+      u64 FREEZE_PERFMON_ON_PMI  : 1;
+      u64 ENABLE_UNCORE_PMI      : 1;
+      u64 FREEZE_WHILE_SMM       : 1;
+      u64 RTM_DEBUG              : 1;
+      u64 reserved_1             : 48;
    } fields;
 } ia32_debugctl_t;
 #define IA32_DEBUGCTL_MSR 0x1D9
 
+typedef union
+{
+   u64 value;
+   struct
+   {
+      u64 EN                  : 1;
+      u64 BNDPRESERVE         : 1;
+      u64 reserved_0          : 10;
+      u64 bound_dir_base_addr : 52;
+   } fields;
+} ia32_bndfcgs_t;
+#define IA32_BNDCFGS_MSR 0xD90
+
 #define IA32_SYSENTER_CS_MSR 0x174
-#define IA32_SYSENTER_EIP_MSR 0x176
 #define IA32_SYSENTER_ESP_MSR 0x175
+#define IA32_SYSENTER_EIP_MSR 0x176
+#define IA32_PERF_GLOBAL_CTRL_MSR 0x38F
+#define IA32_PAT_MSR 0x277
+#define IA32_S_CET_MSR 0x6A2
+#define IA32_INTERRUPT_SSP_TABLE_ADDR_MSR 0x6A8
+#define IA32_PKRS_MSR 0x6E1
+#define IA32_RTIT_CTL_MSR 0x570
+#define IA32_LBR_CTL_MSR 0x14CE
+
+#define IA32_FS_BASE 0xC0000100
+#define IA32_GS_BASE 0xC0000101
 
 typedef union
 {

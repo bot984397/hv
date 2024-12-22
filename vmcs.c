@@ -568,6 +568,52 @@ static __vmx_exception_bitmap vmcs_setup_exception_bitmap (void)
    return control;
 }
 
+static void vmcs_set_msr_bitmap (vcpu_ctx_t *vcpu_ctx)
+{
+   mem_set_pages (vcpu_ctx->bitmaps.msr_bitmaps, 0xFF, 2);
+}
+
+static void vmcs_set_msr_bitmap_single (u64 msr, bool w, vcpu_ctx_t *vcpu_ctx)
+{
+   switch (msr)
+   {
+      case 0x00000000 ... 0x00001FFF:
+      {
+         u64 byte = msr / 8;
+         u64 bit = msr % 8;
+         vcpu_ctx->bitmaps.msr_bitmaps[w == true ? 2048 + byte : byte] 
+            |= (1 << bit);
+         break;
+      }
+      case 0xC0000000 ... 0xC0001FFF:
+      {
+         u64 byte = (msr - 0xC0000000) / 8;
+         u64 bit = (msr - 0xC0000000) % 8;
+         vcpu_ctx->bitmaps.msr_bitmaps[w == true ? 3072 + byte : 1024 + byte]
+            |= (1 << bit);
+         break;
+      }
+      default:
+         LOG_DBG ("MSR out of range");
+   }
+}
+
+static void vmcs_clr_msr_bitmap (vcpu_ctx_t *vcpu_ctx)
+{
+   mem_zero_pages (vcpu_ctx->bitmaps.msr_bitmaps, 0);
+}
+
+static void vmcs_clr_msr_bitmap_single (u64 msr, vcpu_ctx_t *vcpu_ctx)
+{
+
+}
+
+static void vmcs_setup_msr_bitmaps (vcpu_ctx_t *vcpu_ctx)
+{
+   vmcs_clr_msr_bitmap (vcpu_ctx);
+   vmcs_set_msr_bitmap_single (0xC0001FFF, false, vcpu_ctx);
+}
+
 static void vmcs_setup_control (vcpu_ctx_t *vcpu_ctx)
 {
    __vmx_pinbased_controls pinbased_ctl;
@@ -653,11 +699,11 @@ static void vmcs_setup_control (vcpu_ctx_t *vcpu_ctx)
    __vmx_vmwrite (VMCS_CTRL_LAST_PID_POINTER_INDEX, 0);
 
    // MSR bitmap address
-   mem_zero_pages (vcpu_ctx->bitmaps.msr_bitmaps, 2);
+   vmcs_setup_msr_bitmaps (vcpu_ctx);
    __vmx_vmwrite (VMCS_CTRL_MSR_BITMAPS, vcpu_ctx->bitmaps.msr_bitmaps_phys);
 
    // Executive-VMCS pointer
-   __vmx_vmwrite (VMCS_CTRL_EXECUTIVE_VMCS_POINTER, U64_MAX);
+   __vmx_vmwrite (VMCS_CTRL_EXECUTIVE_VMCS_POINTER, 0);
 
    // Extended-Page-Table Pointer (EPTP)
    __vmx_vmwrite (VMCS_CTRL_EPT_POINTER, 0);
@@ -745,15 +791,32 @@ static void vmcs_setup_host (vcpu_ctx_t *vcpu_ctx)
    // Segment base addresses
 
    // MSRs
-   __vmx_vmwrite (VMCS_HOST_IA32_SYSENTER_CS, 0);
-   __vmx_vmwrite (VMCS_HOST_IA32_SYSENTER_ESP, 0);
-   __vmx_vmwrite (VMCS_HOST_IA32_SYSENTER_EIP, 0);
-   __vmx_vmwrite (VMCS_HOST_IA32_PERF_GLOBAL_CTRL, 0);
-   __vmx_vmwrite (VMCS_HOST_IA32_PAT, 0);
-   __vmx_vmwrite (VMCS_HOST_IA32_EFER, 0);
-   __vmx_vmwrite (VMCS_HOST_IA32_S_CET, 0);
-   __vmx_vmwrite (VMCS_HOST_IA32_INTERRUPT_SSP_TABLE_ADDR, 0);
-   __vmx_vmwrite (VMCS_HOST_IA32_PKRS, 0);
+   __vmx_vmwrite (VMCS_HOST_IA32_SYSENTER_CS, 
+                  __rdmsr (IA32_SYSENTER_CS_MSR));
+
+   __vmx_vmwrite (VMCS_HOST_IA32_SYSENTER_ESP, 
+                  __rdmsr (IA32_SYSENTER_ESP_MSR));
+
+   __vmx_vmwrite (VMCS_HOST_IA32_SYSENTER_EIP, 
+                  __rdmsr (IA32_SYSENTER_EIP_MSR));
+
+   __vmx_vmwrite (VMCS_HOST_IA32_PERF_GLOBAL_CTRL, 
+                  __rdmsr (IA32_PERF_GLOBAL_CTRL_MSR));
+
+   __vmx_vmwrite (VMCS_HOST_IA32_PAT, 
+                  __rdmsr (IA32_PAT_MSR));
+
+   __vmx_vmwrite (VMCS_HOST_IA32_EFER, 
+                  __rdmsr (IA32_EFER_MSR));
+
+   __vmx_vmwrite (VMCS_HOST_IA32_S_CET, 
+                  __rdmsr (IA32_S_CET_MSR));
+
+   __vmx_vmwrite (VMCS_HOST_IA32_INTERRUPT_SSP_TABLE_ADDR, 
+                  __rdmsr (IA32_INTERRUPT_SSP_TABLE_ADDR_MSR));
+
+   __vmx_vmwrite (VMCS_HOST_IA32_PKRS, 
+                  __rdmsr (IA32_PKRS_MSR));
 
    // Shadow-Stack Pointer (SSP) register
    __vmx_vmwrite (VMCS_HOST_SSP, 0);
@@ -777,19 +840,44 @@ static void vmcs_setup_guest (vcpu_ctx_t *vcpu_ctx)
    // Segmentation
 
    // MSRs
-   __vmx_vmwrite (VMCS_GUEST_IA32_DEBUGCTL, 0);
-   __vmx_vmwrite (VMCS_GUEST_IA32_SYSENTER_CS, 0);
-   __vmx_vmwrite (VMCS_GUEST_IA32_SYSENTER_ESP, 0);
-   __vmx_vmwrite (VMCS_GUEST_IA32_SYSENTER_EIP, 0);
-   __vmx_vmwrite (VMCS_GUEST_IA32_PERF_GLOBAL_CTRL, 0);
-   __vmx_vmwrite (VMCS_GUEST_IA32_PAT, 0);
-   __vmx_vmwrite (VMCS_GUEST_IA32_EFER, 0);
-   __vmx_vmwrite (VMCS_GUEST_IA32_BNDCFGS, 0);
-   __vmx_vmwrite (VMCS_GUEST_IA32_RTIT_CTL, 0);
-   __vmx_vmwrite (VMCS_GUEST_IA32_LBR_CTL, 0);
-   __vmx_vmwrite (VMCS_GUEST_IA32_S_CET, 0);
-   __vmx_vmwrite (VMCS_GUEST_IA32_INTERRUPT_SSP_TABLE_ADDR, 0);
-   __vmx_vmwrite (VMCS_GUEST_IA32_PKRS, 0);
+   __vmx_vmwrite (VMCS_GUEST_IA32_DEBUGCTL, 
+                  __rdmsr (IA32_DEBUGCTL_MSR));
+
+   __vmx_vmwrite (VMCS_GUEST_IA32_SYSENTER_CS, 
+                  __rdmsr (IA32_SYSENTER_CS_MSR));
+
+   __vmx_vmwrite (VMCS_GUEST_IA32_SYSENTER_ESP, 
+                  __rdmsr (IA32_SYSENTER_ESP_MSR));
+
+   __vmx_vmwrite (VMCS_GUEST_IA32_SYSENTER_EIP, 
+                  __rdmsr (IA32_SYSENTER_EIP_MSR));
+
+   __vmx_vmwrite (VMCS_GUEST_IA32_PERF_GLOBAL_CTRL, 
+                  __rdmsr (IA32_PERF_GLOBAL_CTRL_MSR));
+
+   __vmx_vmwrite (VMCS_GUEST_IA32_PAT, 
+                  __rdmsr (IA32_PAT_MSR));
+
+   __vmx_vmwrite (VMCS_GUEST_IA32_EFER, 
+                  __rdmsr (IA32_EFER_MSR));
+
+   __vmx_vmwrite (VMCS_GUEST_IA32_BNDCFGS, 
+                  __rdmsr (IA32_BNDCFGS_MSR));
+
+   __vmx_vmwrite (VMCS_GUEST_IA32_RTIT_CTL, 
+                  __rdmsr (IA32_RTIT_CTL_MSR));
+
+   __vmx_vmwrite (VMCS_GUEST_IA32_LBR_CTL, 
+                  __rdmsr (IA32_LBR_CTL_MSR));
+
+   __vmx_vmwrite (VMCS_GUEST_IA32_S_CET, 
+                  __rdmsr (IA32_S_CET_MSR));
+
+   __vmx_vmwrite (VMCS_GUEST_IA32_INTERRUPT_SSP_TABLE_ADDR, 
+                  __rdmsr (IA32_INTERRUPT_SSP_TABLE_ADDR_MSR));
+
+   __vmx_vmwrite (VMCS_GUEST_IA32_PKRS, 
+                  __rdmsr (IA32_PKRS_MSR));
 
    // Shadow-Stack Pointer (SSP) register
    __vmx_vmwrite (VMCS_GUEST_SSP, 0);
@@ -807,7 +895,7 @@ static void vmcs_setup_guest (vcpu_ctx_t *vcpu_ctx)
    __vmx_vmwrite (VMCS_GUEST_PENDING_DEBUG_EXCEPTIONS, 0);
 
    // VMCS link pointer
-   __vmx_vmwrite (VMCS_GUEST_VMCS_LINK_POINTER, 0);
+   __vmx_vmwrite (VMCS_GUEST_VMCS_LINK_POINTER, U64_MAX);
 
    // VMX-preemption timer value
    __vmx_vmwrite (VMCS_GUEST_VMX_PREEMPTION_TIMER_VALUE, 0);
