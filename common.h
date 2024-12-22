@@ -3,15 +3,11 @@
 
 #define LKM_DEBUG
 
-#ifdef _KERNEL
-
-#include <ntddk.h>
-typedef UINT8 u8;
-typedef UINT16 u16;
-typedef UINT32 u32;
-typedef UINT64 u64;
-
-#else
+#if defined(NTDDI_VERSION) || defined (_KERNEL_MODE) || defined(DRIVER)
+#define PLATFORM_WINDOWS
+#elif defined(__KERNEL__)
+#define PLATFORM_LINUX
+#endif
 
 #ifdef LKM_DEBUG
 #define LOG_DBG(fmt, ...) \
@@ -23,9 +19,10 @@ typedef UINT64 u64;
 #include <linux/types.h>
 #include <linux/atomic.h>
 
-#endif // _KERNEL
-
 #include "msr.h"
+
+#define __read_cr0 read_cr0
+#define __write_cr0 write_cr0
 
 typedef struct _vmm_ctx_t vmm_ctx_t;
 typedef struct _vcpu_ctx_t vcpu_ctx_t;

@@ -96,6 +96,37 @@ static inline __attribute__((always_inline)) int __vmx_vmlaunch (void)
    return res;
 }
 
+static inline __attribute__((always_inline)) u64 __read_dr (unsigned int reg)
+{
+   u64 value = 0;
+
+   switch (reg)
+   {
+      case 0:
+         asm volatile ("mov %%dr0, %0" : "=r" (value));
+         break;
+      case 1:
+         asm volatile ("mov %%dr1, %0" : "=r" (value));
+         break;
+      case 2: 
+         asm volatile ("mov %%dr2, %0" : "=r" (value));
+         break;
+      case 3:
+         asm volatile ("mov %%dr3, %0" : "=r" (value));
+         break;
+      case 6:
+         asm volatile ("mov %%dr6, %0" : "=r" (value));
+         break;
+      case 7:
+         asm volatile ("mov %%dr7, %0" : "=r" (value));
+         break;
+      default:
+         return 0;
+   }
+
+   return value;
+}
+
 static inline __attribute__((always_inline)) u64 __read_dr7 (void)
 {
    u64 value = 0;

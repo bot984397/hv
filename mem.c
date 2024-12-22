@@ -47,6 +47,15 @@ void mem_zero_pages (void *page, unsigned int order)
    }
 }
 
+void mem_set_pages (void *page, u8 val, unsigned int order)
+{
+   if (!page)
+   {
+      return;
+   }
+   memset (page, val, PAGE_SIZE << order);
+}
+
 u64 mem_virt_to_phys (void *virt_addr)
 {
    return (u64)virt_to_phys (virt_addr);

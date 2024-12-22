@@ -1,5 +1,3 @@
-// mem.h
-
 #ifndef __LKM_MEM_H__
 #define __LKM_MEM_H__
 
@@ -11,9 +9,8 @@ void mem_free_pages_s (unsigned long page_addr, unsigned int order);
 void mem_free_pages (unsigned long page_addr, unsigned int order);
 
 void mem_zero_pages (void *page, unsigned int order);
+void mem_set_pages (void *page, u8 val, unsigned int order);
 
 u64 mem_virt_to_phys (void *virt_addr);
 
 #endif // __LKM_MEM_H__
-
-// eof

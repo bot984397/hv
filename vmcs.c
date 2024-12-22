@@ -6,6 +6,7 @@
 #include "msr.h"
 #include "enc.h"
 #include "mem.h"
+#include "vmx.h"
 #include "common.h"
 
 static void vmcs_adjust_controls (u32 *ctl, u32 cap)
@@ -728,12 +729,100 @@ static void vmcs_setup_control (vcpu_ctx_t *vcpu_ctx)
    __vmx_vmwrite (VMCS_CTRL_VMENTRY_MSR_LOAD_ADDRESS, 0);
 }
 
-static void vmcs_setup_guest (vcpu_ctx_t *vcpu_ctx)
-{
-}
-
 static void vmcs_setup_host (vcpu_ctx_t *vcpu_ctx)
 {
+   // Control registers
+   __vmx_vmwrite (VMCS_HOST_CR0, __read_cr0 ());
+   __vmx_vmwrite (VMCS_HOST_CR3, __read_cr3 ());
+   __vmx_vmwrite (VMCS_HOST_CR4, __read_cr4 ());
+
+   // RSP and RIP
+   __vmx_vmwrite (VMCS_HOST_RSP, 0);
+   __vmx_vmwrite (VMCS_HOST_RIP, 0);
+
+   // Segment selectors
+
+   // Segment base addresses
+
+   // MSRs
+   __vmx_vmwrite (VMCS_HOST_IA32_SYSENTER_CS, 0);
+   __vmx_vmwrite (VMCS_HOST_IA32_SYSENTER_ESP, 0);
+   __vmx_vmwrite (VMCS_HOST_IA32_SYSENTER_EIP, 0);
+   __vmx_vmwrite (VMCS_HOST_IA32_PERF_GLOBAL_CTRL, 0);
+   __vmx_vmwrite (VMCS_HOST_IA32_PAT, 0);
+   __vmx_vmwrite (VMCS_HOST_IA32_EFER, 0);
+   __vmx_vmwrite (VMCS_HOST_IA32_S_CET, 0);
+   __vmx_vmwrite (VMCS_HOST_IA32_INTERRUPT_SSP_TABLE_ADDR, 0);
+   __vmx_vmwrite (VMCS_HOST_IA32_PKRS, 0);
+
+   // Shadow-Stack Pointer (SSP) register
+   __vmx_vmwrite (VMCS_HOST_SSP, 0);
+}
+
+static void vmcs_setup_guest (vcpu_ctx_t *vcpu_ctx)
+{
+   // Control registers
+   __vmx_vmwrite (VMCS_GUEST_CR0, __read_cr0 ());
+   __vmx_vmwrite (VMCS_GUEST_CR3, __read_cr3 ());
+   __vmx_vmwrite (VMCS_GUEST_CR4, __read_cr4 ());
+
+   // Debug register DR7
+   __vmx_vmwrite (VMCS_GUEST_DR7, __read_dr (7));
+
+   // RSP, RIP and RFLAGS
+   __vmx_vmwrite (VMCS_GUEST_RSP, 0);
+   __vmx_vmwrite (VMCS_GUEST_RIP, 0);
+   __vmx_vmwrite (VMCS_GUEST_RFLAGS, __read_rflags ());
+
+   // Segmentation
+
+   // MSRs
+   __vmx_vmwrite (VMCS_GUEST_IA32_DEBUGCTL, 0);
+   __vmx_vmwrite (VMCS_GUEST_IA32_SYSENTER_CS, 0);
+   __vmx_vmwrite (VMCS_GUEST_IA32_SYSENTER_ESP, 0);
+   __vmx_vmwrite (VMCS_GUEST_IA32_SYSENTER_EIP, 0);
+   __vmx_vmwrite (VMCS_GUEST_IA32_PERF_GLOBAL_CTRL, 0);
+   __vmx_vmwrite (VMCS_GUEST_IA32_PAT, 0);
+   __vmx_vmwrite (VMCS_GUEST_IA32_EFER, 0);
+   __vmx_vmwrite (VMCS_GUEST_IA32_BNDCFGS, 0);
+   __vmx_vmwrite (VMCS_GUEST_IA32_RTIT_CTL, 0);
+   __vmx_vmwrite (VMCS_GUEST_IA32_LBR_CTL, 0);
+   __vmx_vmwrite (VMCS_GUEST_IA32_S_CET, 0);
+   __vmx_vmwrite (VMCS_GUEST_IA32_INTERRUPT_SSP_TABLE_ADDR, 0);
+   __vmx_vmwrite (VMCS_GUEST_IA32_PKRS, 0);
+
+   // Shadow-Stack Pointer (SSP) register
+   __vmx_vmwrite (VMCS_GUEST_SSP, 0);
+
+   // SMBASE register
+   __vmx_vmwrite (VMCS_GUEST_SMBASE, 0);
+
+   // Activity state
+   __vmx_vmwrite (VMCS_GUEST_ACTIVITY_STATE, 0);
+
+   // Interruptibility state
+   __vmx_vmwrite (VMCS_GUEST_INTERRUPTIBILITY_STATE, 0);
+
+   // Pending debug exceptions
+   __vmx_vmwrite (VMCS_GUEST_PENDING_DEBUG_EXCEPTIONS, 0);
+
+   // VMCS link pointer
+   __vmx_vmwrite (VMCS_GUEST_VMCS_LINK_POINTER, 0);
+
+   // VMX-preemption timer value
+   __vmx_vmwrite (VMCS_GUEST_VMX_PREEMPTION_TIMER_VALUE, 0);
+
+   // Page-Directory-Pointer-Table entries (PDPTEs)
+   __vmx_vmwrite (VMCS_GUEST_PDPTE0, 0);
+   __vmx_vmwrite (VMCS_GUEST_PDPTE1, 0);
+   __vmx_vmwrite (VMCS_GUEST_PDPTE2, 0);
+   __vmx_vmwrite (VMCS_GUEST_PDPTE3, 0);
+
+   // Guest interrupt status
+   __vmx_vmwrite (VMCS_GUEST_INTERRUPT_STATUS, 0);
+
+   // PML index
+   __vmx_vmwrite (VMCS_GUEST_PML_INDEX, 0);
 }
 
 __attribute__((warn_unused_result)) 
@@ -750,14 +839,14 @@ int vmcs_setup (vcpu_ctx_t *vcpu_ctx)
 
    vmcs_setup_control (vcpu_ctx);
    
-   vmcs_setup_guest (vcpu_ctx);
-
    vmcs_setup_host (vcpu_ctx);
+
+   vmcs_setup_guest (vcpu_ctx);
 
    int status = __vmx_vmlaunch ();
    if (status != 0)
    {
-      LOG_DBG ("%llu", __vmx_vmread (VMCS_RO_VM_INSTRUCTION_ERROR));
+      LOG_DBG ("%s", vmx_get_error_message ());
    }
 
    return 1;
