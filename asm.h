@@ -103,49 +103,28 @@ static inline __attribute__((always_inline)) u64 __read_dr (unsigned int reg)
    switch (reg)
    {
       case 0:
-         asm volatile ("mov %%dr0, %0" : "=r" (value));
+         __asm__ volatile ("mov %%dr0, %0" : "=r" (value));
          break;
       case 1:
-         asm volatile ("mov %%dr1, %0" : "=r" (value));
+         __asm__ volatile ("mov %%dr1, %0" : "=r" (value));
          break;
       case 2: 
-         asm volatile ("mov %%dr2, %0" : "=r" (value));
+         __asm__ volatile ("mov %%dr2, %0" : "=r" (value));
          break;
       case 3:
-         asm volatile ("mov %%dr3, %0" : "=r" (value));
+         __asm__ volatile ("mov %%dr3, %0" : "=r" (value));
          break;
       case 6:
-         asm volatile ("mov %%dr6, %0" : "=r" (value));
+         __asm__ volatile ("mov %%dr6, %0" : "=r" (value));
          break;
       case 7:
-         asm volatile ("mov %%dr7, %0" : "=r" (value));
+         __asm__ volatile ("mov %%dr7, %0" : "=r" (value));
          break;
       default:
          return 0;
    }
 
    return value;
-}
-
-static inline __attribute__((always_inline)) u64 __read_dr7 (void)
-{
-   u64 value = 0;
-   __asm__ volatile
-   (
-      "mov %%dr7, %0"
-      : "=r" (value)
-   );
-   return value;
-}
-
-static inline __attribute__((always_inline)) void __write_dr7 (u64 value)
-{
-   __asm__ volatile
-   (
-      "mov %0, %%dr7"
-      :
-      : "r" (value)
-   );
 }
 
 static inline __attribute__((always_inline)) u64 __read_rflags (void)
@@ -160,6 +139,94 @@ static inline __attribute__((always_inline)) u64 __read_rflags (void)
       : "memory"
    );
    return value;
+}
+
+static inline __attribute__((always_inline)) u16 __read_ldtr (void)
+{
+   u16 v;
+   __asm__ volatile
+   (
+      "sldt %0"
+      : "=r" (v)
+   );
+   return v;
+}
+
+static inline __attribute__((always_inline)) u16 __read_tr (void)
+{
+   u16 v;
+   __asm__ volatile
+   (
+      "str %0"
+      : "=r" (v)
+   );
+   return v;
+}
+
+static inline __attribute__((always_inline)) u16 __read_cs (void)
+{
+   u16 v;
+   __asm__ volatile
+   (
+      "mov %0, cs"
+      : "=r" (v)
+   );
+   return v;
+}
+
+static inline __attribute__((always_inline)) u16 __read_ss (void)
+{
+   u16 v;
+   __asm__ volatile
+   (
+      "mov %0, ss"
+      : "=r" (v)
+   );
+   return v;
+}
+
+static inline __attribute__((always_inline)) u16 __read_ds (void)
+{
+   u16 v;
+   __asm__ volatile
+   (
+      "mov %0, ds"
+      : "=r" (v)
+   );
+   return v;
+}
+
+static inline __attribute__((always_inline)) u16 __read_es (void)
+{
+   u16 v;
+   __asm__ volatile
+   (
+      "mov %0, es"
+      : "=r" (v)
+   );
+   return v;
+}
+
+static inline __attribute__((always_inline)) u16 __read_fs (void)
+{
+   u16 v;
+   __asm__ volatile
+   (
+      "mov %0, fs"
+      : "=r" (v)
+   );
+   return v;
+}
+
+static inline __attribute__((always_inline)) u16 __read_gs (void)
+{
+   u16 v;
+   __asm__ volatile
+   (
+      "mov %0, gs"
+      : "=r" (v)
+   );
+   return v;
 }
 
 #endif // __LKM_ASM_H__

@@ -569,10 +569,12 @@ static __vmx_exception_bitmap vmcs_setup_exception_bitmap (void)
    return control;
 }
 
+/*
 static void vmcs_set_msr_bitmap (vcpu_ctx_t *vcpu_ctx)
 {
    mem_set_pages (vcpu_ctx->bitmaps.msr_bitmaps, 0xFF, 2);
 }
+*/
 
 static void vmcs_set_msr_bitmap_single (u64 msr, bool w, vcpu_ctx_t *vcpu_ctx)
 {
@@ -604,10 +606,12 @@ static void vmcs_clr_msr_bitmap (vcpu_ctx_t *vcpu_ctx)
    mem_zero_pages (vcpu_ctx->bitmaps.msr_bitmaps, 0);
 }
 
+/*
 static void vmcs_clr_msr_bitmap_single (u64 msr, vcpu_ctx_t *vcpu_ctx)
 {
 
 }
+*/
 
 static void vmcs_setup_msr_bitmaps (vcpu_ctx_t *vcpu_ctx)
 {
