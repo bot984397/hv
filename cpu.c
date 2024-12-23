@@ -55,16 +55,13 @@ bool vcpu_enable_vmx (void)
       __wrmsr (IA32_FEATURE_CONTROL_MSR, (feat_ctl.ctl >> 32), feat_ctl.ctl);
    }
 
-   cr4.value = __read_cr4 ();
-   cr4.flags.VMXE = 1;
-   __write_cr4 (cr4.value);
-
-   cr4.value = __read_cr4 ();
+   cr4.ctl = __read_cr4 ();
+   cr4.VMXE = 1;
    fixed.ctl = __rdmsr (IA32_VMX_CR4_FIXED0_MSR);
-   cr4.value |= fixed.split.low;
+   cr4.ctl |= fixed.split.low;
    fixed.ctl = __rdmsr (IA32_VMX_CR4_FIXED1_MSR);
-   cr4.value &= fixed.split.low;
-   __write_cr4 (cr4.value);
+   cr4.ctl &= fixed.split.low;
+   __write_cr4 (cr4.ctl);
 
    cr0.value = __read_cr0 ();
    fixed.ctl = __rdmsr (IA32_VMX_CR0_FIXED0_MSR);

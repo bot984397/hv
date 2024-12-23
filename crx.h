@@ -36,7 +36,7 @@ typedef union
 
 typedef union
 {
-   u64 value;
+   u64 ctl;
    struct
    {
       u64 VME        : 1;
@@ -67,7 +67,7 @@ typedef union
       u64 UINTR      : 1;
       u64 reserved_1 : 2;
       u64 LAM_SUP    : 1;
-   } flags;
+   };
 } cr4_t;
 
 #endif // __LKM_CR_H__

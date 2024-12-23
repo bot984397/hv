@@ -7,6 +7,7 @@
 #include "enc.h"
 #include "mem.h"
 #include "vmx.h"
+#include "crx.h"
 #include "common.h"
 
 static void vmcs_adjust_controls (u32 *ctl, u32 cap)
@@ -674,9 +675,15 @@ static void vmcs_setup_control (vcpu_ctx_t *vcpu_ctx)
 
    // CR0 and CR4 shadowing / guest-host masks
    __vmx_vmwrite (VMCS_CTRL_CR0_GUEST_HOST_MASK, 0);
-   __vmx_vmwrite (VMCS_CTRL_CR4_GUEST_HOST_MASK, 0);
-   __vmx_vmwrite (VMCS_CTRL_CR0_READ_SHADOW, 0);
-   __vmx_vmwrite (VMCS_CTRL_CR4_READ_SHADOW, 0);
+   __vmx_vmwrite (VMCS_CTRL_CR0_READ_SHADOW, __read_cr0 ());
+   cr4_t cr4;
+   cr4_t cr4_mask;
+   cr4_mask.ctl = 0;
+   cr4_mask.VMXE = 1;
+   cr4.ctl = __read_cr4 ();
+   cr4.VMXE = 0;
+   __vmx_vmwrite (VMCS_CTRL_CR4_GUEST_HOST_MASK, cr4_mask.ctl);
+   __vmx_vmwrite (VMCS_CTRL_CR4_READ_SHADOW, cr4.ctl);
 
    // CR3 target count and values
    __vmx_vmwrite (VMCS_CTRL_CR3_TARGET_COUNT, 0);
@@ -837,7 +844,45 @@ static void vmcs_setup_guest (vcpu_ctx_t *vcpu_ctx)
    __vmx_vmwrite (VMCS_GUEST_RIP, 0);
    __vmx_vmwrite (VMCS_GUEST_RFLAGS, __read_rflags ());
 
-   // Segmentation
+   // Segment selectors
+   __vmx_vmwrite (VMCS_GUEST_CS_SELECTOR, 0);
+   __vmx_vmwrite (VMCS_GUEST_SS_SELECTOR, 0);
+   __vmx_vmwrite (VMCS_GUEST_DS_SELECTOR, 0);
+   __vmx_vmwrite (VMCS_GUEST_ES_SELECTOR, 0);
+   __vmx_vmwrite (VMCS_GUEST_FS_SELECTOR, 0);
+   __vmx_vmwrite (VMCS_GUEST_GS_SELECTOR, 0);
+   __vmx_vmwrite (VMCS_GUEST_LDTR_SELECTOR, 0);
+   __vmx_vmwrite (VMCS_GUEST_TR_SELECTOR, 0);
+
+   // Segment base addresses
+   __vmx_vmwrite (VMCS_GUEST_CS_BASE, 0);
+   __vmx_vmwrite (VMCS_GUEST_SS_BASE, 0);
+   __vmx_vmwrite (VMCS_GUEST_DS_BASE, 0);
+   __vmx_vmwrite (VMCS_GUEST_ES_BASE, 0);
+   __vmx_vmwrite (VMCS_GUEST_FS_BASE, 0);
+   __vmx_vmwrite (VMCS_GUEST_FS_BASE, 0);
+   __vmx_vmwrite (VMCS_GUEST_LDTR_BASE, 0);
+   __vmx_vmwrite (VMCS_GUEST_TR_BASE, 0);
+
+   // Segment limits
+   __vmx_vmwrite (VMCS_GUEST_CS_LIMIT, 0);
+   __vmx_vmwrite (VMCS_GUEST_SS_LIMIT, 0);
+   __vmx_vmwrite (VMCS_GUEST_DS_LIMIT, 0);
+   __vmx_vmwrite (VMCS_GUEST_ES_LIMIT, 0);
+   __vmx_vmwrite (VMCS_GUEST_FS_LIMIT, 0);
+   __vmx_vmwrite (VMCS_GUEST_GS_LIMIT, 0);
+   __vmx_vmwrite (VMCS_GUEST_LDTR_LIMIT, 0);
+   __vmx_vmwrite (VMCS_GUEST_TR_LIMIT, 0);
+
+   // Access rights
+   __vmx_vmwrite (VMCS_GUEST_CS_ACCESS_RIGHTS, 0);
+   __vmx_vmwrite (VMCS_GUEST_SS_ACCESS_RIGHTS, 0);
+   __vmx_vmwrite (VMCS_GUEST_DS_ACCESS_RIGHTS, 0);
+   __vmx_vmwrite (VMCS_GUEST_ES_ACCESS_RIGHTS, 0);
+   __vmx_vmwrite (VMCS_GUEST_FS_ACCESS_RIGHTS, 0);
+   __vmx_vmwrite (VMCS_GUEST_GS_ACCESS_RIGHTS, 0);
+   __vmx_vmwrite (VMCS_GUEST_LDTR_ACCESS_RIGHTS, 0);
+   __vmx_vmwrite (VMCS_GUEST_TR_ACCESS_RIGHTS, 0);
 
    // MSRs
    __vmx_vmwrite (VMCS_GUEST_IA32_DEBUGCTL, 
