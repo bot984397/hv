@@ -229,4 +229,16 @@ static inline __attribute__((always_inline)) u16 __read_gs (void)
    return v;
 }
 
+static inline __attribute__((always_inline)) u16 __seglimit (u16 sel)
+{
+   u16 v;
+   __asm__ volatile
+   (
+      "lsl ;"
+      "setz %b0;"
+      : "+q" (v)
+   );
+   return v;
+}
+
 #endif // __LKM_ASM_H__

@@ -214,4 +214,23 @@ typedef union
    };
 } __vmx_exception_bitmap;
 
+typedef union
+{
+   u32 ctl;
+   struct
+   {
+      u32 segment_type     : 4;
+      u32 descriptor_type  : 1;
+      u32 DPL              : 2;
+      u32 P                : 1;
+      u32 reserved_0       : 4;
+      u32 AVL              : 1;
+      u32 reserved_1       : 1;
+      u32 DB               : 1;
+      u32 G                : 1;
+      u32 segment_unusable : 1;
+      u32 reserved_2       : 15;
+   };
+} __segment_access_rights;
+
 #endif // __LKM_VMCS_H__
