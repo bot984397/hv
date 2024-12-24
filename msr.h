@@ -22,6 +22,7 @@ typedef union
       u64 reserved_3                : 43;
    };
 } ia32_feature_control_t;
+size_assert (ia32_feature_control_t, 8);
 #define IA32_FEATURE_CONTROL_MSR 0x03A
 
 typedef union
@@ -42,6 +43,7 @@ typedef union
       u64 reserved_2         : 7;
    } fields;
 } ia32_vmx_basic_t;
+size_assert (ia32_vmx_basic_t, 8);
 #define IA32_VMX_BASIC_MSR 0x480
 
 typedef union
@@ -58,6 +60,7 @@ typedef union
       u64 reserved_2 : 52;
    } fields;
 } ia32_efer_t;
+size_assert (ia32_efer_t, 8);
 #define IA32_EFER_MSR 0xC0000080
 
 typedef union
@@ -82,6 +85,7 @@ typedef union
       u64 reserved_1             : 48;
    } fields;
 } ia32_debugctl_t;
+size_assert (ia32_debugctl_t, 8);
 #define IA32_DEBUGCTL_MSR 0x1D9
 
 typedef union
@@ -95,6 +99,7 @@ typedef union
       u64 bound_dir_base_addr : 52;
    } fields;
 } ia32_bndfcgs_t;
+size_assert (ia32_bndfcgs_t, 8);
 #define IA32_BNDCFGS_MSR 0xD90
 
 #define IA32_SYSENTER_CS_MSR 0x174

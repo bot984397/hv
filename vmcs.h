@@ -20,6 +20,7 @@ typedef union
       u32 reserved_2                      : 24;
    };
 } __vmx_pinbased_controls;
+size_assert (__vmx_pinbased_controls, 4);
 
 typedef union
 {
@@ -56,6 +57,7 @@ typedef union
       u32 activate_secondary_controls  : 1;
    };
 } __vmx_procbased_ctls;
+size_assert (__vmx_procbased_ctls, 4);
 
 typedef union
 {
@@ -94,9 +96,9 @@ typedef union
       u32 reserved_0                      : 1;
       u32 vmm_bus_lock_detection          : 1;
       u32 instruction_timeout             : 1;
-      u32 reserved_1                      : 32;
    };
 } __vmx_procbased_ctls2;
+size_assert (__vmx_procbased_ctls2, 4);
 
 typedef union
 {
@@ -114,6 +116,7 @@ typedef union
       u64 reserved_1                   : 56;
    };
 } __vmx_procbased_ctls3;
+size_assert (__vmx_procbased_ctls3, 8);
 
 typedef union
 {
@@ -145,6 +148,7 @@ typedef union
       u32 activate_secondary_controls     : 1;
    };
 } __vmx_exit_ctls;
+size_assert (__vmx_exit_ctls, 4);
 
 typedef union
 {
@@ -156,6 +160,7 @@ typedef union
       u32 reserved_1                      : 28;
    };
 } __vmx_exit_ctls2;
+size_assert (__vmx_exit_ctls2, 4);
 
 typedef union
 {
@@ -182,6 +187,7 @@ typedef union
       u32 reserved_3                         : 9;
    };
 } __vmx_entry_ctls;
+size_assert (__vmx_entry_ctls, 4);
 
 typedef union
 {
@@ -213,6 +219,7 @@ typedef union
       u32 reserved_2                      : 10;
    };
 } __vmx_exception_bitmap;
+size_assert (__vmx_exception_bitmap, 4);
 
 typedef union
 {
@@ -232,5 +239,6 @@ typedef union
       u32 reserved_2       : 15;
    };
 } __segment_access_rights;
+size_assert (__segment_access_rights, 4);
 
 #endif // __LKM_VMCS_H__

@@ -9,6 +9,11 @@
 #define PLATFORM_LINUX
 #endif
 
+#ifndef size_assert
+#define size_assert(obj, size) \
+   typedef char obj##__size_assert_[(!!(sizeof(obj)==size))*2-1]
+#endif
+
 #ifdef LKM_DEBUG
 #define LOG_DBG(fmt, ...) \
    pr_info ("[lkm] %s: " fmt "\n", __FUNCTION__, ##__VA_ARGS__)
