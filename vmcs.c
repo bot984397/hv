@@ -19,6 +19,11 @@ static void vmcs_adjust_controls (u32 *ctl, u32 cap)
    *ctl &= cap_msr.split.allowed_1;
 }
 
+static void vmcs_adjust_controls_ex (u32 *ctl, u32 cap1, u32 cap2, bool t)
+{
+   vmcs_adjust_controls (ctl, t == true ? cap2 : cap1);
+}
+
 static __vmx_pinbased_controls vmcs_setup_pinbased_ctls (void)
 {
    __vmx_pinbased_controls control = {0};
@@ -632,16 +637,18 @@ static void vmcs_setup_control (vcpu_ctx_t *vcpu_ctx)
 
    // pinbased vm-execution controls
    pinbased_ctl = vmcs_setup_pinbased_ctls ();
-   vmcs_adjust_controls (&pinbased_ctl.ctl, true_controls == 1
-         ? IA32_VMX_PINBASED_CTLS_MSR
-         : IA32_VMX_TRUE_PINBASED_CTLS_MSR);
+   vmcs_adjust_controls_ex (&pinbased_ctl.ctl, 
+                            IA32_VMX_PINBASED_CTLS_MSR, 
+                            IA32_VMX_TRUE_PINBASED_CTLS_MSR, 
+                            true_controls);
    __vmx_vmwrite (VMCS_CTRL_PINBASED_CONTROLS, pinbased_ctl.ctl);
 
    // primary processor based vm-execution controls
    procbased_ctl = vmcs_setup_primary_procbased_ctls ();
-   vmcs_adjust_controls (&procbased_ctl.ctl, true_controls == 1
-         ? IA32_VMX_PROCBASED_CTLS_MSR
-         : IA32_VMX_TRUE_PROCBASED_CTLS_MSR);
+   vmcs_adjust_controls_ex (&procbased_ctl.ctl,
+                            IA32_VMX_PROCBASED_CTLS_MSR,
+                            IA32_VMX_TRUE_PROCBASED_CTLS_MSR,
+                            true_controls);
    __vmx_vmwrite (VMCS_CTRL_PROCBASED_CTLS, procbased_ctl.ctl);
 
    // secondary processor based vm-execution controls
@@ -651,16 +658,18 @@ static void vmcs_setup_control (vcpu_ctx_t *vcpu_ctx)
 
    // primary vm-exit controls
    exit_ctl = vmcs_setup_primary_exit_ctls ();
-   vmcs_adjust_controls (&exit_ctl.ctl, true_controls == 1
-         ? IA32_VMX_EXIT_CTLS_MSR
-         : IA32_VMX_TRUE_EXIT_CTLS_MSR);
+   vmcs_adjust_controls_ex (&exit_ctl.ctl,
+                            IA32_VMX_EXIT_CTLS_MSR,
+                            IA32_VMX_TRUE_EXIT_CTLS_MSR,
+                            true_controls);
    __vmx_vmwrite (VMCS_CTRL_PRIMARY_VMEXIT_CONTROLS, exit_ctl.ctl);
 
    // vm-entry controls
    entry_ctl = vmcs_setup_entry_ctls ();
-   vmcs_adjust_controls (&entry_ctl.ctl, true_controls == 1
-         ? IA32_VMX_ENTRY_CTLS_MSR
-         : IA32_VMX_TRUE_ENTRY_CTLS_MSR);
+   vmcs_adjust_controls_ex (&entry_ctl.ctl,
+                            IA32_VMX_ENTRY_CTLS_MSR,
+                            IA32_VMX_TRUE_ENTRY_CTLS_MSR,
+                            true_controls);
    __vmx_vmwrite (VMCS_CTRL_VMENTRY_CONTROLS, entry_ctl.ctl);
 
    // exception bitmap
