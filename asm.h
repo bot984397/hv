@@ -89,29 +89,15 @@ static inline __attribute__((always_inline)) u64 fvmread (u64 f)
 
 static inline __attribute__((always_inline)) u8 vmlaunch (void)
 {
-   u8 r = 0;
+   u8 r;
    __asm__ __volatile__
    (
-      "vmlaunch;"
-      "setc %b0;"
-      : "+q" (r)
+      "vmlaunch; setna %[r]"
+      : [r] "=r" (r)
       :
-      : "cc"
+      : "cc", "memory"
    );
    return r;
-}
-
-static inline __attribute__((always_inline)) u64 vmreadt (u64 field)
-{
-   u64 value = 0;
-   __asm__ volatile
-   (
-      "vmread %[value], %[field];"
-      : [value] "=r" (value)
-      : [field] "r" (field)
-      : "cc"
-   );
-   return value;
 }
 
 static inline __attribute__((always_inline)) u64 __read_dr (unsigned int reg)

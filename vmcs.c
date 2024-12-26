@@ -793,6 +793,9 @@ static void vmcs_setup_control (vcpu_ctx_t *vcpu_ctx)
    // VM-Entry controls for MSRs
    vmwrite (VMCS_CTRL_VMENTRY_MSR_LOAD_COUNT, 0);
    vmwrite (VMCS_CTRL_VMENTRY_MSR_LOAD_ADDRESS, 0);
+
+   // VM-Instruction error information field
+   vmwrite (VMCS_RO_VM_INSTRUCTION_ERROR, 0);
 }
 
 static void vmcs_setup_host (vcpu_ctx_t *vcpu_ctx)
@@ -976,24 +979,14 @@ int vmcs_setup (vcpu_ctx_t *vcpu_ctx)
 {
    if (vmclear (vcpu_ctx->vmcs_physical) != 0)
    {
-      LOG_DBG ("vmclear failed");
+      LOG_DBG ("VMCLEAR: %s", vmx_get_error_message ());
       return 0;
    }
    if (vmptrld (vcpu_ctx->vmcs_physical) != 0)
    {
-      LOG_DBG ("vmptrld failed");
+      LOG_DBG ("VMPTRLD: %s", vmx_get_error_message ());
       return 0;
    }
-
-   if (vmptrld (vcpu_ctx->vmxon_physical) != 0)
-   {
-      LOG_DBG ("vmptrld failed");
-      u64 val = fvmread (VMCS_RO_VM_INSTRUCTION_ERROR);
-      LOG_DBG ("vali: %llu", val);
-      return 0;
-   }
-
-   return 1;
 
    vmcs_setup_control (vcpu_ctx);
    
@@ -1001,12 +994,11 @@ int vmcs_setup (vcpu_ctx_t *vcpu_ctx)
 
    vmcs_setup_guest (vcpu_ctx);
 
-   int status = vmlaunch ();
-   if (status != 0)
+   if (VMX_ERR (vmlaunch ()))
    {
-      LOG_DBG ("%s", vmx_get_error_message ());
+      LOG_DBG ("VMLAUNCH: %s", vmx_get_error_message ());
+      return 0;
    }
-   LOG_DBG ("%s", vmx_get_error_message ());
 
    return 1;
 }

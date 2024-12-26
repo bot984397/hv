@@ -21,6 +21,9 @@
 #define LOG_DBG(fmt, ...)
 #endif
 
+#define VMX_OK 0
+#define VMX_ERR(fn) ((fn) != 0)
+
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/printk.h>
