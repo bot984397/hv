@@ -75,9 +75,6 @@ struct _vcpu_ctx_t
    {
       ia32_vmx_basic_t vmx_basic;
    } cached;
-
-   vcpu_ctx_t *flink;
-   vcpu_ctx_t *blink;
 };
 
 struct _vm_region_t
