@@ -814,32 +814,23 @@ static void vmcs_setup_host (vcpu_ctx_t *vcpu_ctx)
    // Segment base addresses
 
    // MSRs
-   vmwrite (VMCS_HOST_IA32_SYSENTER_CS, 
-                  __rdmsr (IA32_SYSENTER_CS_MSR));
+   vmwrite (VMCS_HOST_IA32_SYSENTER_CS, __rdmsr (IA32_SYSENTER_CS_MSR));
 
-   vmwrite (VMCS_HOST_IA32_SYSENTER_ESP, 
-                  __rdmsr (IA32_SYSENTER_ESP_MSR));
+   vmwrite (VMCS_HOST_IA32_SYSENTER_ESP, __rdmsr (IA32_SYSENTER_ESP_MSR));
 
-   vmwrite (VMCS_HOST_IA32_SYSENTER_EIP, 
-                  __rdmsr (IA32_SYSENTER_EIP_MSR));
+   vmwrite (VMCS_HOST_IA32_SYSENTER_EIP, __rdmsr (IA32_SYSENTER_EIP_MSR));
 
-   vmwrite (VMCS_HOST_IA32_PERF_GLOBAL_CTRL, 
-                  __rdmsr (IA32_PERF_GLOBAL_CTRL_MSR));
+   vmwrite (VMCS_HOST_IA32_PERF_GLOBAL_CTRL, __rdmsr (IA32_PERF_GLOBAL_CTRL_MSR));
 
-   vmwrite (VMCS_HOST_IA32_PAT, 
-                  __rdmsr (IA32_PAT_MSR));
+   vmwrite (VMCS_HOST_IA32_PAT, __rdmsr (IA32_PAT_MSR));
 
-   vmwrite (VMCS_HOST_IA32_EFER, 
-                  __rdmsr (IA32_EFER_MSR));
+   vmwrite (VMCS_HOST_IA32_EFER, __rdmsr (IA32_EFER_MSR));
 
-   vmwrite (VMCS_HOST_IA32_S_CET, 
-                  __rdmsr (IA32_S_CET_MSR));
+   vmwrite (VMCS_HOST_IA32_S_CET, __rdmsr (IA32_S_CET_MSR));
 
-   vmwrite (VMCS_HOST_IA32_INTERRUPT_SSP_TABLE_ADDR, 
-                  __rdmsr (IA32_INTERRUPT_SSP_TABLE_ADDR_MSR));
+   vmwrite (VMCS_HOST_IA32_INTERRUPT_SSP_TABLE_ADDR, __rdmsr (IA32_INTERRUPT_SSP_TABLE_ADDR_MSR));
 
-   vmwrite (VMCS_HOST_IA32_PKRS, 
-                  __rdmsr (IA32_PKRS_MSR));
+   vmwrite (VMCS_HOST_IA32_PKRS, __rdmsr (IA32_PKRS_MSR));
 
    // Shadow-Stack Pointer (SSP) register
    vmwrite (VMCS_HOST_SSP, 0);
