@@ -199,16 +199,18 @@ void vcpu_init (void *info)
    }
 
    vcpu_ctx_t *vcpu_ctx = g_vmm_ctx->vcpu_ctxs[this_cpu]; 
-   int err = __vmx_on (vcpu_ctx->vmxon_physical);
+   int err = vmxon (vcpu_ctx->vmxon_physical);
    if (err != 0)
    {
       VCPU_DBG ("[vmxon] failed");
+      vmxoff ();
       return;
    }
    VCPU_DBG ("[vmxon] executed successfully");
 
    if (!vmcs_setup (vcpu_ctx))
    {
+      vmxoff ();
       return;
    }
 
@@ -217,6 +219,6 @@ void vcpu_init (void *info)
 
 void vcpu_restore (void *info)
 {
-   __vmx_off ();
+   vmxoff ();
    VCPU_DBG ("[vmxoff] executed");
 }

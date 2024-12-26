@@ -53,5 +53,5 @@ static const char* vmx_error_internal (u64 err)
 
 const char* vmx_get_error_message (void)
 {
-   return vmx_error_internal (__vmx_vmread (VMCS_RO_VM_INSTRUCTION_ERROR));
+   return vmx_error_internal (vmreadt (VMCS_RO_VM_INSTRUCTION_ERROR));
 }

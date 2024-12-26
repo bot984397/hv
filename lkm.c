@@ -5,15 +5,22 @@
 #include "vmm.h"
 #include "cpu.h"
 #include "msr.h"
+#include "asm.h"
 #include "vmcs.h"
 #include "common.h"
 #include "hotplug.h"
 
 vmm_ctx_t *g_vmm_ctx;
 
+static void debug (void)
+{
+
+}
+
 static int __init lkm_init (void)
 {
    LOG_DBG ("module loaded");
+   debug ();
 
    if (!cpu_hotplug_register ())
    {

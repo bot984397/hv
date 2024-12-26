@@ -70,4 +70,34 @@ typedef union
    };
 } cr4_t;
 
+typedef union
+{
+   u64 ctl;
+   struct
+   {
+      u64 CF         : 1;
+      u64 reserved_0 : 1;
+      u64 PF         : 1;
+      u64 reserved_1 : 1;
+      u64 AF         : 1;
+      u64 reserved_2 : 1;
+      u64 ZF         : 1;
+      u64 SF         : 1;
+      u64 TF         : 1;
+      u64 IF         : 1;
+      u64 DF         : 1;
+      u64 OF         : 1;
+      u64 IOPL       : 2;
+      u64 NT         : 1;
+      u64 reserved_3 : 1;
+      u64 RF         : 1;
+      u64 VM         : 1;
+      u64 AC         : 1;
+      u64 VIF        : 1;
+      u64 VIP        : 1;
+      u64 ID         : 1;
+      u64 reserved_4 : 42;
+   };
+} rflags_t;
+
 #endif // __LKM_CR_H__

@@ -641,7 +641,7 @@ static void vmcs_setup_control (vcpu_ctx_t *vcpu_ctx)
                             IA32_VMX_PINBASED_CTLS_MSR, 
                             IA32_VMX_TRUE_PINBASED_CTLS_MSR, 
                             true_controls);
-   __vmx_vmwrite (VMCS_CTRL_PINBASED_CONTROLS, pinbased_ctl.ctl);
+   vmwrite (VMCS_CTRL_PINBASED_CONTROLS, pinbased_ctl.ctl);
 
    // primary processor based vm-execution controls
    procbased_ctl = vmcs_setup_primary_procbased_ctls ();
@@ -649,12 +649,12 @@ static void vmcs_setup_control (vcpu_ctx_t *vcpu_ctx)
                             IA32_VMX_PROCBASED_CTLS_MSR,
                             IA32_VMX_TRUE_PROCBASED_CTLS_MSR,
                             true_controls);
-   __vmx_vmwrite (VMCS_CTRL_PROCBASED_CTLS, procbased_ctl.ctl);
+   vmwrite (VMCS_CTRL_PROCBASED_CTLS, procbased_ctl.ctl);
 
    // secondary processor based vm-execution controls
    procbased_ctl2 = vmcs_setup_secondary_procbased_ctls ();
    vmcs_adjust_controls (&procbased_ctl2.ctl, IA32_VMX_PROCBASED_CTLS2_MSR);
-   __vmx_vmwrite (VMCS_CTRL_PROCBASED_CTLS2, procbased_ctl2.ctl);
+   vmwrite (VMCS_CTRL_PROCBASED_CTLS2, procbased_ctl2.ctl);
 
    // primary vm-exit controls
    exit_ctl = vmcs_setup_primary_exit_ctls ();
@@ -662,7 +662,7 @@ static void vmcs_setup_control (vcpu_ctx_t *vcpu_ctx)
                             IA32_VMX_EXIT_CTLS_MSR,
                             IA32_VMX_TRUE_EXIT_CTLS_MSR,
                             true_controls);
-   __vmx_vmwrite (VMCS_CTRL_PRIMARY_VMEXIT_CONTROLS, exit_ctl.ctl);
+   vmwrite (VMCS_CTRL_PRIMARY_VMEXIT_CONTROLS, exit_ctl.ctl);
 
    // vm-entry controls
    entry_ctl = vmcs_setup_entry_ctls ();
@@ -670,318 +670,330 @@ static void vmcs_setup_control (vcpu_ctx_t *vcpu_ctx)
                             IA32_VMX_ENTRY_CTLS_MSR,
                             IA32_VMX_TRUE_ENTRY_CTLS_MSR,
                             true_controls);
-   __vmx_vmwrite (VMCS_CTRL_VMENTRY_CONTROLS, entry_ctl.ctl);
+   vmwrite (VMCS_CTRL_VMENTRY_CONTROLS, entry_ctl.ctl);
 
    // exception bitmap
    exception_bitmap = vmcs_setup_exception_bitmap ();
-   __vmx_vmwrite (VMCS_CTRL_EXCEPTION_BITMAP, exception_bitmap.ctl);
+   vmwrite (VMCS_CTRL_EXCEPTION_BITMAP, exception_bitmap.ctl);
 
    // I/O bitmap addresses
    mem_zero_pages (vcpu_ctx->bitmaps.io_bitmap_a, 0);
-   __vmx_vmwrite (VMCS_CTRL_IO_BITMAP_A, vcpu_ctx->bitmaps.io_bitmap_a_phys);
+   vmwrite (VMCS_CTRL_IO_BITMAP_A, vcpu_ctx->bitmaps.io_bitmap_a_phys);
    mem_zero_pages (vcpu_ctx->bitmaps.io_bitmap_b, 0);
-   __vmx_vmwrite (VMCS_CTRL_IO_BITMAP_B, vcpu_ctx->bitmaps.io_bitmap_b_phys);
+   vmwrite (VMCS_CTRL_IO_BITMAP_B, vcpu_ctx->bitmaps.io_bitmap_b_phys);
 
    // Time-Stamp Counter offset and multiplier
-   __vmx_vmwrite (VMCS_CTRL_TSC_OFFSET, 0);
-   __vmx_vmwrite (VMCS_CTRL_TSC_MULTIPLIER, 0);
+   vmwrite (VMCS_CTRL_TSC_OFFSET, 0);
+   vmwrite (VMCS_CTRL_TSC_MULTIPLIER, 0);
 
    // CR0 and CR4 shadowing / guest-host masks
-   __vmx_vmwrite (VMCS_CTRL_CR0_GUEST_HOST_MASK, 0);
-   __vmx_vmwrite (VMCS_CTRL_CR0_READ_SHADOW, __read_cr0 ());
+   vmwrite (VMCS_CTRL_CR0_GUEST_HOST_MASK, 0);
+   vmwrite (VMCS_CTRL_CR0_READ_SHADOW, __read_cr0 ());
    cr4_t cr4;
    cr4_t cr4_mask;
    cr4_mask.ctl = 0;
    cr4_mask.VMXE = 1;
    cr4.ctl = __read_cr4 ();
    cr4.VMXE = 0;
-   __vmx_vmwrite (VMCS_CTRL_CR4_GUEST_HOST_MASK, cr4_mask.ctl);
-   __vmx_vmwrite (VMCS_CTRL_CR4_READ_SHADOW, cr4.ctl);
+   vmwrite (VMCS_CTRL_CR4_GUEST_HOST_MASK, cr4_mask.ctl);
+   vmwrite (VMCS_CTRL_CR4_READ_SHADOW, cr4.ctl);
 
    // CR3 target count and values
-   __vmx_vmwrite (VMCS_CTRL_CR3_TARGET_COUNT, 0);
-   __vmx_vmwrite (VMCS_CTRL_CR3_TARGET_VALUE_0, 0);
-   __vmx_vmwrite (VMCS_CTRL_CR3_TARGET_VALUE_1, 0);
-   __vmx_vmwrite (VMCS_CTRL_CR3_TARGET_VALUE_2, 0);
-   __vmx_vmwrite (VMCS_CTRL_CR3_TARGET_VALUE_3, 0);
+   vmwrite (VMCS_CTRL_CR3_TARGET_COUNT, 0);
+   vmwrite (VMCS_CTRL_CR3_TARGET_VALUE_0, 0);
+   vmwrite (VMCS_CTRL_CR3_TARGET_VALUE_1, 0);
+   vmwrite (VMCS_CTRL_CR3_TARGET_VALUE_2, 0);
+   vmwrite (VMCS_CTRL_CR3_TARGET_VALUE_3, 0);
 
    // APIC virtualization controls
-   __vmx_vmwrite (VMCS_CTRL_APIC_ACCESS_ADDRESS, 0);
-   __vmx_vmwrite (VMCS_CTRL_VIRTUAL_APIC_ADDRESS, 0);
-   __vmx_vmwrite (VMCS_CTRL_TPR_THRESHOLD, 0);
-   __vmx_vmwrite (VMCS_CTRL_EOI_EXIT_BITMAP_0, 0);
-   __vmx_vmwrite (VMCS_CTRL_EOI_EXIT_BITMAP_1, 0);
-   __vmx_vmwrite (VMCS_CTRL_EOI_EXIT_BITMAP_2, 0);
-   __vmx_vmwrite (VMCS_CTRL_EOI_EXIT_BITMAP_3, 0);
-   __vmx_vmwrite (VMCS_CTRL_POSTED_INTERRUPT_NOTIFICATION_VECTOR, 0);
-   __vmx_vmwrite (VMCS_CTRL_POSTED_INTERRUPT_DESCRIPTOR_ADDRESS, 0);
-   __vmx_vmwrite (VMCS_CTRL_PID_POINTER_TABLE_ADDRESS, 0);
-   __vmx_vmwrite (VMCS_CTRL_LAST_PID_POINTER_INDEX, 0);
+   vmwrite (VMCS_CTRL_APIC_ACCESS_ADDRESS, 0);
+   vmwrite (VMCS_CTRL_VIRTUAL_APIC_ADDRESS, 0);
+   vmwrite (VMCS_CTRL_TPR_THRESHOLD, 0);
+   vmwrite (VMCS_CTRL_EOI_EXIT_BITMAP_0, 0);
+   vmwrite (VMCS_CTRL_EOI_EXIT_BITMAP_1, 0);
+   vmwrite (VMCS_CTRL_EOI_EXIT_BITMAP_2, 0);
+   vmwrite (VMCS_CTRL_EOI_EXIT_BITMAP_3, 0);
+   vmwrite (VMCS_CTRL_POSTED_INTERRUPT_NOTIFICATION_VECTOR, 0);
+   vmwrite (VMCS_CTRL_POSTED_INTERRUPT_DESCRIPTOR_ADDRESS, 0);
+   vmwrite (VMCS_CTRL_PID_POINTER_TABLE_ADDRESS, 0);
+   vmwrite (VMCS_CTRL_LAST_PID_POINTER_INDEX, 0);
 
    // MSR bitmap address
    vmcs_setup_msr_bitmaps (vcpu_ctx);
-   __vmx_vmwrite (VMCS_CTRL_MSR_BITMAPS, vcpu_ctx->bitmaps.msr_bitmaps_phys);
+   vmwrite (VMCS_CTRL_MSR_BITMAPS, vcpu_ctx->bitmaps.msr_bitmaps_phys);
 
    // Executive-VMCS pointer
-   __vmx_vmwrite (VMCS_CTRL_EXECUTIVE_VMCS_POINTER, 0);
+   vmwrite (VMCS_CTRL_EXECUTIVE_VMCS_POINTER, 0);
 
    // Extended-Page-Table Pointer (EPTP)
-   __vmx_vmwrite (VMCS_CTRL_EPT_POINTER, 0);
+   vmwrite (VMCS_CTRL_EPT_POINTER, 0);
 
    // Virtual-Processor Identifier (VPID)
-   __vmx_vmwrite (VMCS_CTRL_VIRTUAL_PROCESSOR_IDENTIFIER, 1);
+   vmwrite (VMCS_CTRL_VIRTUAL_PROCESSOR_IDENTIFIER, 1);
 
    // Controls for PAUSE-Loop exiting
-   __vmx_vmwrite (VMCS_CTRL_PLE_GAP, 0);
-   __vmx_vmwrite (VMCS_CTRL_PLE_WINDOW, 0);
+   vmwrite (VMCS_CTRL_PLE_GAP, 0);
+   vmwrite (VMCS_CTRL_PLE_WINDOW, 0);
 
    // VM-Function Controls
    // TODO: implement vmcs_setup_vmfunc_ctls
-   __vmx_vmwrite (VMCS_CTRL_VM_FUNCTION_CONTROLS, 0);
-   __vmx_vmwrite (VMCS_CTRL_EPTP_LIST_ADDRESS, 0);
+   vmwrite (VMCS_CTRL_VM_FUNCTION_CONTROLS, 0);
+   vmwrite (VMCS_CTRL_EPTP_LIST_ADDRESS, 0);
 
    // VMCS Shadowing Bitmap Addresses
-   __vmx_vmwrite (VMCS_CTRL_VMREAD_BITMAP_ADDRESS, 0);
-   __vmx_vmwrite (VMCS_CTRL_VMWRITE_BITMAP_ADDRESS, 0);
+   vmwrite (VMCS_CTRL_VMREAD_BITMAP_ADDRESS, 0);
+   vmwrite (VMCS_CTRL_VMWRITE_BITMAP_ADDRESS, 0);
 
    // ENCLS-Exiting Bitmap
-   __vmx_vmwrite (VMCS_CTRL_ENCLS_EXITING_BITMAP, 0);
+   vmwrite (VMCS_CTRL_ENCLS_EXITING_BITMAP, 0);
 
    // ENCLV-Exiting Bitmap
-   __vmx_vmwrite (VMCS_CTRL_ENCLV_EXITING_BITMAP, 0);
+   vmwrite (VMCS_CTRL_ENCLV_EXITING_BITMAP, 0);
 
    // PCONFIG-Exiting Bitmap
-   __vmx_vmwrite (VMCS_CTRL_PCONFIG_EXITING_BITMAP, 0);
+   vmwrite (VMCS_CTRL_PCONFIG_EXITING_BITMAP, 0);
 
    // Control Field for Page-Modification logging
-   __vmx_vmwrite (VMCS_CTRL_PML_ADDRESS, 0);
+   vmwrite (VMCS_CTRL_PML_ADDRESS, 0);
 
    // Controls for Virtualization Exceptions
-   __vmx_vmwrite (VMCS_CTRL_VIRT_EXCEPTION_INFORMATION_ADDRESS, 0);
-   __vmx_vmwrite (VMCS_CTRL_EPTP_INDEX, 0);
+   vmwrite (VMCS_CTRL_VIRT_EXCEPTION_INFORMATION_ADDRESS, 0);
+   vmwrite (VMCS_CTRL_EPTP_INDEX, 0);
 
    // XSS-Exiting Bitmap
-   __vmx_vmwrite (VMCS_CTRL_XSS_EXITING_BITMAP, 0);
+   vmwrite (VMCS_CTRL_XSS_EXITING_BITMAP, 0);
 
    // Sub-Page-Permission-Table Pointer (SPPTP)
-   __vmx_vmwrite (VMCS_CTRL_SUB_PAGE_PERMISSION_TABLE_POINTER, 0);
+   vmwrite (VMCS_CTRL_SUB_PAGE_PERMISSION_TABLE_POINTER, 0);
 
    // HLAT related fields
-   __vmx_vmwrite (VMCS_CTRL_HLATP, 0);
+   vmwrite (VMCS_CTRL_HLATP, 0);
 
    // PASID translation related fields
-   __vmx_vmwrite (VMCS_CTRL_LOW_PASID_DIRECTORY_ADDRESS, 0);
-   __vmx_vmwrite (VMCS_CTRL_HIGH_PASID_DIRECTORY_ADDRESS, 0);
+   vmwrite (VMCS_CTRL_LOW_PASID_DIRECTORY_ADDRESS, 0);
+   vmwrite (VMCS_CTRL_HIGH_PASID_DIRECTORY_ADDRESS, 0);
 
    // Instruction-Timeout Control
-   __vmx_vmwrite (VMCS_CTRL_INSTRUCTION_TIMEOUT_CONTROL, 0);
+   vmwrite (VMCS_CTRL_INSTRUCTION_TIMEOUT_CONTROL, 0);
 
    // IA32_SPEC_CTRL MSR virtualization controls
-   __vmx_vmwrite (VMCS_CTRL_IA32_SPEC_CTRL_MASK, 0);
-   __vmx_vmwrite (VMCS_CTRL_IA32_SPEC_CTRL_SHADOW, 0);
+   vmwrite (VMCS_CTRL_IA32_SPEC_CTRL_MASK, 0);
+   vmwrite (VMCS_CTRL_IA32_SPEC_CTRL_SHADOW, 0);
 
    // VM-Exit controls
 
    // VM-Exit controls for MSRs
-   __vmx_vmwrite (VMCS_CTRL_VMEXIT_MSR_STORE_COUNT, 0);
-   __vmx_vmwrite (VMCS_CTRL_VMEXIT_MSR_STORE_ADDRESS, 0);
-   __vmx_vmwrite (VMCS_CTRL_VMEXIT_MSR_LOAD_COUNT, 0);
-   __vmx_vmwrite (VMCS_CTRL_VMEXIT_MSR_LOAD_ADDRESS, 0);
+   vmwrite (VMCS_CTRL_VMEXIT_MSR_STORE_COUNT, 0);
+   vmwrite (VMCS_CTRL_VMEXIT_MSR_STORE_ADDRESS, 0);
+   vmwrite (VMCS_CTRL_VMEXIT_MSR_LOAD_COUNT, 0);
+   vmwrite (VMCS_CTRL_VMEXIT_MSR_LOAD_ADDRESS, 0);
 
    // VM-Entry controls
 
    // VM-Entry controls for MSRs
-   __vmx_vmwrite (VMCS_CTRL_VMENTRY_MSR_LOAD_COUNT, 0);
-   __vmx_vmwrite (VMCS_CTRL_VMENTRY_MSR_LOAD_ADDRESS, 0);
+   vmwrite (VMCS_CTRL_VMENTRY_MSR_LOAD_COUNT, 0);
+   vmwrite (VMCS_CTRL_VMENTRY_MSR_LOAD_ADDRESS, 0);
 }
 
 static void vmcs_setup_host (vcpu_ctx_t *vcpu_ctx)
 {
    // Control registers
-   __vmx_vmwrite (VMCS_HOST_CR0, __read_cr0 ());
-   __vmx_vmwrite (VMCS_HOST_CR3, __read_cr3 ());
-   __vmx_vmwrite (VMCS_HOST_CR4, __read_cr4 ());
+   vmwrite (VMCS_HOST_CR0, __read_cr0 ());
+   vmwrite (VMCS_HOST_CR3, __read_cr3 ());
+   vmwrite (VMCS_HOST_CR4, __read_cr4 ());
 
    // RSP and RIP
-   __vmx_vmwrite (VMCS_HOST_RSP, 0);
-   __vmx_vmwrite (VMCS_HOST_RIP, 0);
+   vmwrite (VMCS_HOST_RSP, 0);
+   vmwrite (VMCS_HOST_RIP, 0);
 
    // Segment selectors
 
    // Segment base addresses
 
    // MSRs
-   __vmx_vmwrite (VMCS_HOST_IA32_SYSENTER_CS, 
+   vmwrite (VMCS_HOST_IA32_SYSENTER_CS, 
                   __rdmsr (IA32_SYSENTER_CS_MSR));
 
-   __vmx_vmwrite (VMCS_HOST_IA32_SYSENTER_ESP, 
+   vmwrite (VMCS_HOST_IA32_SYSENTER_ESP, 
                   __rdmsr (IA32_SYSENTER_ESP_MSR));
 
-   __vmx_vmwrite (VMCS_HOST_IA32_SYSENTER_EIP, 
+   vmwrite (VMCS_HOST_IA32_SYSENTER_EIP, 
                   __rdmsr (IA32_SYSENTER_EIP_MSR));
 
-   __vmx_vmwrite (VMCS_HOST_IA32_PERF_GLOBAL_CTRL, 
+   vmwrite (VMCS_HOST_IA32_PERF_GLOBAL_CTRL, 
                   __rdmsr (IA32_PERF_GLOBAL_CTRL_MSR));
 
-   __vmx_vmwrite (VMCS_HOST_IA32_PAT, 
+   vmwrite (VMCS_HOST_IA32_PAT, 
                   __rdmsr (IA32_PAT_MSR));
 
-   __vmx_vmwrite (VMCS_HOST_IA32_EFER, 
+   vmwrite (VMCS_HOST_IA32_EFER, 
                   __rdmsr (IA32_EFER_MSR));
 
-   __vmx_vmwrite (VMCS_HOST_IA32_S_CET, 
+   vmwrite (VMCS_HOST_IA32_S_CET, 
                   __rdmsr (IA32_S_CET_MSR));
 
-   __vmx_vmwrite (VMCS_HOST_IA32_INTERRUPT_SSP_TABLE_ADDR, 
+   vmwrite (VMCS_HOST_IA32_INTERRUPT_SSP_TABLE_ADDR, 
                   __rdmsr (IA32_INTERRUPT_SSP_TABLE_ADDR_MSR));
 
-   __vmx_vmwrite (VMCS_HOST_IA32_PKRS, 
+   vmwrite (VMCS_HOST_IA32_PKRS, 
                   __rdmsr (IA32_PKRS_MSR));
 
    // Shadow-Stack Pointer (SSP) register
-   __vmx_vmwrite (VMCS_HOST_SSP, 0);
+   vmwrite (VMCS_HOST_SSP, 0);
 }
 
 static void vmcs_setup_guest (vcpu_ctx_t *vcpu_ctx)
 {
    // Control registers
-   __vmx_vmwrite (VMCS_GUEST_CR0, __read_cr0 ());
-   __vmx_vmwrite (VMCS_GUEST_CR3, __read_cr3 ());
-   __vmx_vmwrite (VMCS_GUEST_CR4, __read_cr4 ());
+   vmwrite (VMCS_GUEST_CR0, __read_cr0 ());
+   vmwrite (VMCS_GUEST_CR3, __read_cr3 ());
+   vmwrite (VMCS_GUEST_CR4, __read_cr4 ());
 
    // Debug register DR7
-   __vmx_vmwrite (VMCS_GUEST_DR7, __read_dr (7));
+   vmwrite (VMCS_GUEST_DR7, __read_dr (7));
 
    // RSP, RIP and RFLAGS
-   __vmx_vmwrite (VMCS_GUEST_RSP, 0);
-   __vmx_vmwrite (VMCS_GUEST_RIP, 0);
-   __vmx_vmwrite (VMCS_GUEST_RFLAGS, __read_rflags ());
+   vmwrite (VMCS_GUEST_RSP, 0);
+   vmwrite (VMCS_GUEST_RIP, 0);
+   vmwrite (VMCS_GUEST_RFLAGS, __read_rflags ());
 
    // Segment selectors
-   __vmx_vmwrite (VMCS_GUEST_CS_SELECTOR, 0);
-   __vmx_vmwrite (VMCS_GUEST_SS_SELECTOR, 0);
-   __vmx_vmwrite (VMCS_GUEST_DS_SELECTOR, 0);
-   __vmx_vmwrite (VMCS_GUEST_ES_SELECTOR, 0);
-   __vmx_vmwrite (VMCS_GUEST_FS_SELECTOR, 0);
-   __vmx_vmwrite (VMCS_GUEST_GS_SELECTOR, 0);
-   __vmx_vmwrite (VMCS_GUEST_LDTR_SELECTOR, 0);
-   __vmx_vmwrite (VMCS_GUEST_TR_SELECTOR, 0);
+   vmwrite (VMCS_GUEST_CS_SELECTOR, 0);
+   vmwrite (VMCS_GUEST_SS_SELECTOR, 0);
+   vmwrite (VMCS_GUEST_DS_SELECTOR, 0);
+   vmwrite (VMCS_GUEST_ES_SELECTOR, 0);
+   vmwrite (VMCS_GUEST_FS_SELECTOR, 0);
+   vmwrite (VMCS_GUEST_GS_SELECTOR, 0);
+   vmwrite (VMCS_GUEST_LDTR_SELECTOR, 0);
+   vmwrite (VMCS_GUEST_TR_SELECTOR, 0);
 
    // Segment base addresses
-   __vmx_vmwrite (VMCS_GUEST_CS_BASE, 0);
-   __vmx_vmwrite (VMCS_GUEST_SS_BASE, 0);
-   __vmx_vmwrite (VMCS_GUEST_DS_BASE, 0);
-   __vmx_vmwrite (VMCS_GUEST_ES_BASE, 0);
-   __vmx_vmwrite (VMCS_GUEST_FS_BASE, 0);
-   __vmx_vmwrite (VMCS_GUEST_FS_BASE, 0);
-   __vmx_vmwrite (VMCS_GUEST_LDTR_BASE, 0);
-   __vmx_vmwrite (VMCS_GUEST_TR_BASE, 0);
+   vmwrite (VMCS_GUEST_CS_BASE, 0);
+   vmwrite (VMCS_GUEST_SS_BASE, 0);
+   vmwrite (VMCS_GUEST_DS_BASE, 0);
+   vmwrite (VMCS_GUEST_ES_BASE, 0);
+   vmwrite (VMCS_GUEST_FS_BASE, 0);
+   vmwrite (VMCS_GUEST_FS_BASE, 0);
+   vmwrite (VMCS_GUEST_LDTR_BASE, 0);
+   vmwrite (VMCS_GUEST_TR_BASE, 0);
 
    // Segment limits
-   __vmx_vmwrite (VMCS_GUEST_CS_LIMIT, 0);
-   __vmx_vmwrite (VMCS_GUEST_SS_LIMIT, 0);
-   __vmx_vmwrite (VMCS_GUEST_DS_LIMIT, 0);
-   __vmx_vmwrite (VMCS_GUEST_ES_LIMIT, 0);
-   __vmx_vmwrite (VMCS_GUEST_FS_LIMIT, 0);
-   __vmx_vmwrite (VMCS_GUEST_GS_LIMIT, 0);
-   __vmx_vmwrite (VMCS_GUEST_LDTR_LIMIT, 0);
-   __vmx_vmwrite (VMCS_GUEST_TR_LIMIT, 0);
+   vmwrite (VMCS_GUEST_CS_LIMIT, 0);
+   vmwrite (VMCS_GUEST_SS_LIMIT, 0);
+   vmwrite (VMCS_GUEST_DS_LIMIT, 0);
+   vmwrite (VMCS_GUEST_ES_LIMIT, 0);
+   vmwrite (VMCS_GUEST_FS_LIMIT, 0);
+   vmwrite (VMCS_GUEST_GS_LIMIT, 0);
+   vmwrite (VMCS_GUEST_LDTR_LIMIT, 0);
+   vmwrite (VMCS_GUEST_TR_LIMIT, 0);
 
    // Access rights
-   __vmx_vmwrite (VMCS_GUEST_CS_ACCESS_RIGHTS, 0);
-   __vmx_vmwrite (VMCS_GUEST_SS_ACCESS_RIGHTS, 0);
-   __vmx_vmwrite (VMCS_GUEST_DS_ACCESS_RIGHTS, 0);
-   __vmx_vmwrite (VMCS_GUEST_ES_ACCESS_RIGHTS, 0);
-   __vmx_vmwrite (VMCS_GUEST_FS_ACCESS_RIGHTS, 0);
-   __vmx_vmwrite (VMCS_GUEST_GS_ACCESS_RIGHTS, 0);
-   __vmx_vmwrite (VMCS_GUEST_LDTR_ACCESS_RIGHTS, 0);
-   __vmx_vmwrite (VMCS_GUEST_TR_ACCESS_RIGHTS, 0);
+   vmwrite (VMCS_GUEST_CS_ACCESS_RIGHTS, 0);
+   vmwrite (VMCS_GUEST_SS_ACCESS_RIGHTS, 0);
+   vmwrite (VMCS_GUEST_DS_ACCESS_RIGHTS, 0);
+   vmwrite (VMCS_GUEST_ES_ACCESS_RIGHTS, 0);
+   vmwrite (VMCS_GUEST_FS_ACCESS_RIGHTS, 0);
+   vmwrite (VMCS_GUEST_GS_ACCESS_RIGHTS, 0);
+   vmwrite (VMCS_GUEST_LDTR_ACCESS_RIGHTS, 0);
+   vmwrite (VMCS_GUEST_TR_ACCESS_RIGHTS, 0);
 
    // MSRs
-   __vmx_vmwrite (VMCS_GUEST_IA32_DEBUGCTL, 
+   vmwrite (VMCS_GUEST_IA32_DEBUGCTL, 
                   __rdmsr (IA32_DEBUGCTL_MSR));
 
-   __vmx_vmwrite (VMCS_GUEST_IA32_SYSENTER_CS, 
+   vmwrite (VMCS_GUEST_IA32_SYSENTER_CS, 
                   __rdmsr (IA32_SYSENTER_CS_MSR));
 
-   __vmx_vmwrite (VMCS_GUEST_IA32_SYSENTER_ESP, 
+   vmwrite (VMCS_GUEST_IA32_SYSENTER_ESP, 
                   __rdmsr (IA32_SYSENTER_ESP_MSR));
 
-   __vmx_vmwrite (VMCS_GUEST_IA32_SYSENTER_EIP, 
+   vmwrite (VMCS_GUEST_IA32_SYSENTER_EIP, 
                   __rdmsr (IA32_SYSENTER_EIP_MSR));
 
-   __vmx_vmwrite (VMCS_GUEST_IA32_PERF_GLOBAL_CTRL, 
+   vmwrite (VMCS_GUEST_IA32_PERF_GLOBAL_CTRL, 
                   __rdmsr (IA32_PERF_GLOBAL_CTRL_MSR));
 
-   __vmx_vmwrite (VMCS_GUEST_IA32_PAT, 
+   vmwrite (VMCS_GUEST_IA32_PAT, 
                   __rdmsr (IA32_PAT_MSR));
 
-   __vmx_vmwrite (VMCS_GUEST_IA32_EFER, 
+   vmwrite (VMCS_GUEST_IA32_EFER, 
                   __rdmsr (IA32_EFER_MSR));
 
-   __vmx_vmwrite (VMCS_GUEST_IA32_BNDCFGS, 
+   vmwrite (VMCS_GUEST_IA32_BNDCFGS, 
                   __rdmsr (IA32_BNDCFGS_MSR));
 
-   __vmx_vmwrite (VMCS_GUEST_IA32_RTIT_CTL, 
+   vmwrite (VMCS_GUEST_IA32_RTIT_CTL, 
                   __rdmsr (IA32_RTIT_CTL_MSR));
 
-   __vmx_vmwrite (VMCS_GUEST_IA32_LBR_CTL, 
+   vmwrite (VMCS_GUEST_IA32_LBR_CTL, 
                   __rdmsr (IA32_LBR_CTL_MSR));
 
-   __vmx_vmwrite (VMCS_GUEST_IA32_S_CET, 
+   vmwrite (VMCS_GUEST_IA32_S_CET, 
                   __rdmsr (IA32_S_CET_MSR));
 
-   __vmx_vmwrite (VMCS_GUEST_IA32_INTERRUPT_SSP_TABLE_ADDR, 
+   vmwrite (VMCS_GUEST_IA32_INTERRUPT_SSP_TABLE_ADDR, 
                   __rdmsr (IA32_INTERRUPT_SSP_TABLE_ADDR_MSR));
 
-   __vmx_vmwrite (VMCS_GUEST_IA32_PKRS, 
+   vmwrite (VMCS_GUEST_IA32_PKRS, 
                   __rdmsr (IA32_PKRS_MSR));
 
    // Shadow-Stack Pointer (SSP) register
-   __vmx_vmwrite (VMCS_GUEST_SSP, 0);
+   vmwrite (VMCS_GUEST_SSP, 0);
 
    // SMBASE register
-   __vmx_vmwrite (VMCS_GUEST_SMBASE, 0);
+   vmwrite (VMCS_GUEST_SMBASE, 0);
 
    // Activity state
-   __vmx_vmwrite (VMCS_GUEST_ACTIVITY_STATE, 0);
+   vmwrite (VMCS_GUEST_ACTIVITY_STATE, 0);
 
    // Interruptibility state
-   __vmx_vmwrite (VMCS_GUEST_INTERRUPTIBILITY_STATE, 0);
+   vmwrite (VMCS_GUEST_INTERRUPTIBILITY_STATE, 0);
 
    // Pending debug exceptions
-   __vmx_vmwrite (VMCS_GUEST_PENDING_DEBUG_EXCEPTIONS, 0);
+   vmwrite (VMCS_GUEST_PENDING_DEBUG_EXCEPTIONS, 0);
 
    // VMCS link pointer
-   __vmx_vmwrite (VMCS_GUEST_VMCS_LINK_POINTER, U64_MAX);
+   vmwrite (VMCS_GUEST_VMCS_LINK_POINTER, U64_MAX);
 
    // VMX-preemption timer value
-   __vmx_vmwrite (VMCS_GUEST_VMX_PREEMPTION_TIMER_VALUE, 0);
+   vmwrite (VMCS_GUEST_VMX_PREEMPTION_TIMER_VALUE, 0);
 
    // Page-Directory-Pointer-Table entries (PDPTEs)
-   __vmx_vmwrite (VMCS_GUEST_PDPTE0, 0);
-   __vmx_vmwrite (VMCS_GUEST_PDPTE1, 0);
-   __vmx_vmwrite (VMCS_GUEST_PDPTE2, 0);
-   __vmx_vmwrite (VMCS_GUEST_PDPTE3, 0);
+   vmwrite (VMCS_GUEST_PDPTE0, 0);
+   vmwrite (VMCS_GUEST_PDPTE1, 0);
+   vmwrite (VMCS_GUEST_PDPTE2, 0);
+   vmwrite (VMCS_GUEST_PDPTE3, 0);
 
    // Guest interrupt status
-   __vmx_vmwrite (VMCS_GUEST_INTERRUPT_STATUS, 0);
+   vmwrite (VMCS_GUEST_INTERRUPT_STATUS, 0);
 
    // PML index
-   __vmx_vmwrite (VMCS_GUEST_PML_INDEX, 0);
+   vmwrite (VMCS_GUEST_PML_INDEX, 0);
 }
 
 __attribute__((warn_unused_result)) 
 int vmcs_setup (vcpu_ctx_t *vcpu_ctx)
 {
-   if (__vmx_vmclear (vcpu_ctx->vmcs_physical) != 0)
+   if (vmclear (vcpu_ctx->vmcs_physical) != 0)
    {
+      LOG_DBG ("vmclear failed");
       return 0;
    }
-   if (__vmx_vmptrld (vcpu_ctx->vmcs_physical) != 0)
+   if (vmptrld (vcpu_ctx->vmcs_physical) != 0)
    {
+      LOG_DBG ("vmptrld failed");
       return 0;
    }
+
+   if (vmptrld (vcpu_ctx->vmxon_physical) != 0)
+   {
+      LOG_DBG ("vmptrld failed");
+      u64 val = fvmread (VMCS_RO_VM_INSTRUCTION_ERROR);
+      LOG_DBG ("vali: %llu", val);
+      return 0;
+   }
+
+   return 1;
 
    vmcs_setup_control (vcpu_ctx);
    
@@ -989,11 +1001,12 @@ int vmcs_setup (vcpu_ctx_t *vcpu_ctx)
 
    vmcs_setup_guest (vcpu_ctx);
 
-   int status = __vmx_vmlaunch ();
+   int status = vmlaunch ();
    if (status != 0)
    {
       LOG_DBG ("%s", vmx_get_error_message ());
    }
+   LOG_DBG ("%s", vmx_get_error_message ());
 
    return 1;
 }

@@ -2,74 +2,106 @@
 #define __LKM_ASM_H__
 
 #include <linux/types.h>
+#include "common.h"
 
-static inline __attribute__((always_inline)) int __vmx_on (u64 phys)
+static inline __attribute__((always_inline)) u8 vmxon (u64 phys)
 {
-   int res = 0;
-   __asm__ volatile
+   u8 r;
+   __asm__ __volatile__
    (
-      "vmxon %[region];"
-      "setc %b0;"
-      : "+q" (res)
-      : [region] "m" (phys)
-      : "cc"
+      "vmxon %[pa]; setna %[r]"
+      : [r] "=rm" (r)
+      : [pa] "m" (phys)
+      : "cc", "memory"
    );
-   return res;
+   return r;
 }
 
-static inline __attribute__((always_inline)) void __vmx_off (void)
+static inline __attribute__((always_inline)) void vmxoff (void)
 {
-   __asm__ volatile
+   __asm__ __volatile__
    (
-      "vmxoff;"
+      "vmxoff"
       :
       :
       : "cc"
    );
 }
 
-static inline __attribute__((always_inline)) int __vmx_vmclear (u64 phys)
+static inline __attribute__((always_inline)) u8 vmclear (u64 p)
 {
-   int res = 0;
-   __asm__ volatile
+   u8 r;
+   __asm__ __volatile__
    (
-      "vmclear %[region];"
-      "setc %b0;"
-      : "+q" (res)
-      : [region] "m" (phys)
-      : "cc"
+      "vmclear %[p]; setna %[r]"
+      : [r] "=rm" (r)
+      : [p] "m" (p)
+      : "cc", "memory"
    );
-   return res;
+   return r;
 }
 
-static inline __attribute__((always_inline)) int __vmx_vmptrld (u64 phys)
+static inline __attribute__((always_inline)) u8 vmptrld (u64 p)
 {
-   int res = 0;
-   __asm__ volatile
+   u8 r;
+   __asm__ __volatile__
    (
-      "vmptrld %[region];"
-      "setc %b0;"
-      : "+q" (res)
-      : [region] "m" (phys)
-      : "cc"
+      "vmptrld %[p]; setna %[r]"
+      : [r] "=rm" (r)
+      : [p] "m" (p)
+      : "cc", "memory"
    );
-   return res;
+   return r;
 }
 
-static inline __attribute__((always_inline)) 
-void __vmx_vmwrite (u64 field, u64 value)
+static inline __attribute__((always_inline)) u8 vmwrite (u64 f, u64 v)
 {
-   __asm__ volatile
+   u8 r;
+   __asm__ __volatile__
    (
-      "vmwrite %[value], %[field];"
+      "vmwrite %[v], %[f]; setna %[r]"
+      : [r] "=rm" (r)
+      : [v] "rm" (v), [f] "r" (f)
+      : "cc", "memory"
+   );
+   return r;
+}
+
+static inline __attribute__((always_inline)) u8 vmread (u64 f, u64 *v)
+{
+   u8 r;
+   __asm__ __volatile__
+   (
+      "vmread %%rax, %[f]; setna %[r]"
+      : [r] "=r" (r), "=a" (*v)
+      : [f] "r" (f)
+      : "cc", "memory"
+   );
+   return r;
+}
+
+static inline __attribute__((always_inline)) u64 fvmread (u64 f)
+{
+   u64 v;
+   vmread (f, &v);
+   return v;
+}
+
+static inline __attribute__((always_inline)) u8 vmlaunch (void)
+{
+   u8 r = 0;
+   __asm__ __volatile__
+   (
+      "vmlaunch;"
+      "setc %b0;"
+      : "+q" (r)
       :
-      : [field] "r" (field),
-        [value] "r" (value)
       : "cc"
    );
+   return r;
 }
 
-static inline __attribute__((always_inline)) u64 __vmx_vmread (u64 field)
+static inline __attribute__((always_inline)) u64 vmreadt (u64 field)
 {
    u64 value = 0;
    __asm__ volatile
@@ -80,20 +112,6 @@ static inline __attribute__((always_inline)) u64 __vmx_vmread (u64 field)
       : "cc"
    );
    return value;
-}
-
-static inline __attribute__((always_inline)) int __vmx_vmlaunch (void)
-{
-   int res = -1;
-   __asm__ volatile
-   (
-      "vmlaunch;"
-      "setc %b0;"
-      : "+q" (res)
-      :
-      : "cc"
-   );
-   return res;
 }
 
 static inline __attribute__((always_inline)) u64 __read_dr (unsigned int reg)
@@ -168,7 +186,7 @@ static inline __attribute__((always_inline)) u16 __read_cs (void)
    u16 v;
    __asm__ volatile
    (
-      "mov %0, cs"
+      "mov %%cs, %0"
       : "=r" (v)
    );
    return v;
@@ -179,7 +197,7 @@ static inline __attribute__((always_inline)) u16 __read_ss (void)
    u16 v;
    __asm__ volatile
    (
-      "mov %0, ss"
+      "mov %%ss, %0"
       : "=r" (v)
    );
    return v;
@@ -190,7 +208,7 @@ static inline __attribute__((always_inline)) u16 __read_ds (void)
    u16 v;
    __asm__ volatile
    (
-      "mov %0, ds"
+      "mov %%ds, %0"
       : "=r" (v)
    );
    return v;
@@ -201,7 +219,7 @@ static inline __attribute__((always_inline)) u16 __read_es (void)
    u16 v;
    __asm__ volatile
    (
-      "mov %0, es"
+      "mov %%es, %0"
       : "=r" (v)
    );
    return v;
@@ -212,7 +230,7 @@ static inline __attribute__((always_inline)) u16 __read_fs (void)
    u16 v;
    __asm__ volatile
    (
-      "mov %0, fs"
+      "mov %%fs, %0"
       : "=r" (v)
    );
    return v;
@@ -223,20 +241,20 @@ static inline __attribute__((always_inline)) u16 __read_gs (void)
    u16 v;
    __asm__ volatile
    (
-      "mov %0, gs"
+      "mov %%gs, %0"
       : "=r" (v)
    );
    return v;
 }
 
-static inline __attribute__((always_inline)) u16 __seglimit (u16 sel)
+static inline __attribute__((always_inline)) u32 __seglimit (u16 sel)
 {
-   u16 v;
+   u32 v;
    __asm__ volatile
    (
-      "lsl ;"
-      "setz %b0;"
-      : "+q" (v)
+      "lsl %1, %0"
+      : "=r" (v)
+      : "r" (sel)
    );
    return v;
 }

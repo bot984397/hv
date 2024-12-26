@@ -91,6 +91,7 @@ struct _vm_region_t
    u32 abort_indicator;
    u8 data[4096 - sizeof (u64)];
 } __attribute__((packed));
+size_assert (vm_region_t, 4096);
 
 extern vmm_ctx_t *g_vmm_ctx;
 
