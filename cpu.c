@@ -75,17 +75,6 @@ bool vcpu_enable_vmx (void)
    return true;
 }
 
-static inline __attribute__((always_inline)) 
-void vcpu_set_rev_ident (vcpu_ctx_t *vcpu_ctx)
-{
-   vcpu_ctx->vmxon_region->header.rev_ident =
-      vcpu_ctx->cached.vmx_basic.vmcs_rev_ident;
-   vcpu_ctx->vmxon_region->header.reserved_0 = 0;
-   vcpu_ctx->vmcs_region->header.rev_ident =
-      vcpu_ctx->cached.vmx_basic.vmcs_rev_ident;
-   vcpu_ctx->vmcs_region->header.reserved_0 = 0;
-}
-
 static __attribute__((warn_unused_result)) 
 bool vcpu_alloc_vmx_region (vm_region_t **region, u64 *phys)
 {
