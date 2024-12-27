@@ -14,13 +14,22 @@ vmm_ctx_t *g_vmm_ctx;
 
 static void debug (void)
 {
-
+   vcpu_ctx_t *vcpu_ctx;
+   vcpu_ctx = vcpu_alloc ();
+   if (vcpu_ctx == NULL)
+   {
+      LOG_DBG ("failure");
+   }
+   else
+   {
+      LOG_DBG ("success");
+      vcpu_free (vcpu_ctx);
+   }
 }
 
 static int __init lkm_init (void)
 {
    LOG_DBG ("module loaded");
-   debug ();
 
    if (!cpu_hotplug_register ())
    {

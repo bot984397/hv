@@ -406,7 +406,7 @@ typedef enum
    ENC_VMCS_COMPONENT_FULL_NAT (20, guest_state)
 #define VMCS_GUEST_SSP \
    ENC_VMCS_COMPONENT_FULL_NAT (21, guest_state)
-#define VMCS_GUEST_IA32_INTERRUPT_SSP_TABLE_ADDR \
+#define VMCS_GUEST_IA32_ISSPT_ADDR \
    ENC_VMCS_COMPONENT_FULL_NAT (22, guest_state)
 
 // natural-width fields (host-state)
@@ -438,7 +438,7 @@ typedef enum
    ENC_VMCS_COMPONENT_FULL_NAT (12, host_state)
 #define VMCS_HOST_SSP \
    ENC_VMCS_COMPONENT_FULL_NAT (13, host_state)
-#define VMCS_HOST_IA32_INTERRUPT_SSP_TABLE_ADDR \
+#define VMCS_HOST_IA32_ISSPT_ADDR \
    ENC_VMCS_COMPONENT_FULL_NAT (14, host_state)
 
 typedef enum

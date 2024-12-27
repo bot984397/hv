@@ -633,7 +633,7 @@ static void vmcs_setup_control (vcpu_ctx_t *vcpu_ctx)
    __vmx_entry_ctls entry_ctl;
    __vmx_exception_bitmap exception_bitmap;
 
-   u8 true_controls = vcpu_ctx->cached.vmx_basic.fields.vmx_cap_support;
+   u8 true_controls = vcpu_ctx->cached.vmx_basic.vmx_cap_support;
 
    // pinbased vm-execution controls
    pinbased_ctl = vmcs_setup_pinbased_ctls ();
@@ -828,7 +828,7 @@ static void vmcs_setup_host (vcpu_ctx_t *vcpu_ctx)
 
    vmwrite (VMCS_HOST_IA32_S_CET, __rdmsr (IA32_S_CET_MSR));
 
-   vmwrite (VMCS_HOST_IA32_INTERRUPT_SSP_TABLE_ADDR, __rdmsr (IA32_INTERRUPT_SSP_TABLE_ADDR_MSR));
+   vmwrite (VMCS_HOST_IA32_ISSPT_ADDR, __rdmsr (IA32_ISSPT_ADDR_MSR));
 
    vmwrite (VMCS_HOST_IA32_PKRS, __rdmsr (IA32_PKRS_MSR));
 
@@ -849,7 +849,7 @@ static void vmcs_setup_guest (vcpu_ctx_t *vcpu_ctx)
    // RSP, RIP and RFLAGS
    vmwrite (VMCS_GUEST_RSP, 0);
    vmwrite (VMCS_GUEST_RIP, 0);
-   vmwrite (VMCS_GUEST_RFLAGS, __read_rflags ());
+   vmwrite (VMCS_GUEST_RFLAGS, read_rflags ());
 
    // Segment selectors
    vmwrite (VMCS_GUEST_CS_SELECTOR, 0);
@@ -858,28 +858,28 @@ static void vmcs_setup_guest (vcpu_ctx_t *vcpu_ctx)
    vmwrite (VMCS_GUEST_ES_SELECTOR, 0);
    vmwrite (VMCS_GUEST_FS_SELECTOR, 0);
    vmwrite (VMCS_GUEST_GS_SELECTOR, 0);
-   vmwrite (VMCS_GUEST_LDTR_SELECTOR, 0);
    vmwrite (VMCS_GUEST_TR_SELECTOR, 0);
+   vmwrite (VMCS_GUEST_LDTR_SELECTOR, 0);
 
-   // Segment base addresses
+   // Segment base addresses - CS/SS/DS/ES fixed to 0 in long mode
    vmwrite (VMCS_GUEST_CS_BASE, 0);
    vmwrite (VMCS_GUEST_SS_BASE, 0);
    vmwrite (VMCS_GUEST_DS_BASE, 0);
    vmwrite (VMCS_GUEST_ES_BASE, 0);
-   vmwrite (VMCS_GUEST_FS_BASE, 0);
-   vmwrite (VMCS_GUEST_FS_BASE, 0);
-   vmwrite (VMCS_GUEST_LDTR_BASE, 0);
+   vmwrite (VMCS_GUEST_FS_BASE, __rdmsr (IA32_FS_BASE_MSR));
+   vmwrite (VMCS_GUEST_GS_BASE, __rdmsr (IA32_GS_BASE_MSR));
    vmwrite (VMCS_GUEST_TR_BASE, 0);
+   vmwrite (VMCS_GUEST_LDTR_BASE, 0);
 
-   // Segment limits
+   // Segment limits - CS/SS/DS/ES fixed to 0 in long mode
    vmwrite (VMCS_GUEST_CS_LIMIT, 0);
    vmwrite (VMCS_GUEST_SS_LIMIT, 0);
    vmwrite (VMCS_GUEST_DS_LIMIT, 0);
    vmwrite (VMCS_GUEST_ES_LIMIT, 0);
-   vmwrite (VMCS_GUEST_FS_LIMIT, 0);
-   vmwrite (VMCS_GUEST_GS_LIMIT, 0);
-   vmwrite (VMCS_GUEST_LDTR_LIMIT, 0);
-   vmwrite (VMCS_GUEST_TR_LIMIT, 0);
+   vmwrite (VMCS_GUEST_FS_LIMIT, seglimit (read_fs ()));
+   vmwrite (VMCS_GUEST_GS_LIMIT, seglimit (read_gs ()));
+   vmwrite (VMCS_GUEST_TR_LIMIT, seglimit (read_tr ()));
+   vmwrite (VMCS_GUEST_LDTR_LIMIT, seglimit (read_ldtr ()));
 
    // Access rights
    vmwrite (VMCS_GUEST_CS_ACCESS_RIGHTS, 0);
@@ -888,48 +888,35 @@ static void vmcs_setup_guest (vcpu_ctx_t *vcpu_ctx)
    vmwrite (VMCS_GUEST_ES_ACCESS_RIGHTS, 0);
    vmwrite (VMCS_GUEST_FS_ACCESS_RIGHTS, 0);
    vmwrite (VMCS_GUEST_GS_ACCESS_RIGHTS, 0);
-   vmwrite (VMCS_GUEST_LDTR_ACCESS_RIGHTS, 0);
    vmwrite (VMCS_GUEST_TR_ACCESS_RIGHTS, 0);
+   vmwrite (VMCS_GUEST_LDTR_ACCESS_RIGHTS, 0);
 
    // MSRs
-   vmwrite (VMCS_GUEST_IA32_DEBUGCTL, 
-                  __rdmsr (IA32_DEBUGCTL_MSR));
+   vmwrite (VMCS_GUEST_IA32_DEBUGCTL, __rdmsr (IA32_DEBUGCTL_MSR));
 
-   vmwrite (VMCS_GUEST_IA32_SYSENTER_CS, 
-                  __rdmsr (IA32_SYSENTER_CS_MSR));
+   vmwrite (VMCS_GUEST_IA32_SYSENTER_CS, __rdmsr (IA32_SYSENTER_CS_MSR));
 
-   vmwrite (VMCS_GUEST_IA32_SYSENTER_ESP, 
-                  __rdmsr (IA32_SYSENTER_ESP_MSR));
+   vmwrite (VMCS_GUEST_IA32_SYSENTER_ESP, __rdmsr (IA32_SYSENTER_ESP_MSR));
 
-   vmwrite (VMCS_GUEST_IA32_SYSENTER_EIP, 
-                  __rdmsr (IA32_SYSENTER_EIP_MSR));
+   vmwrite (VMCS_GUEST_IA32_SYSENTER_EIP, __rdmsr (IA32_SYSENTER_EIP_MSR));
 
-   vmwrite (VMCS_GUEST_IA32_PERF_GLOBAL_CTRL, 
-                  __rdmsr (IA32_PERF_GLOBAL_CTRL_MSR));
+   vmwrite (VMCS_GUEST_IA32_PERF_GLOBAL_CTRL, __rdmsr (IA32_PERF_GLOBAL_CTRL_MSR));
 
-   vmwrite (VMCS_GUEST_IA32_PAT, 
-                  __rdmsr (IA32_PAT_MSR));
+   vmwrite (VMCS_GUEST_IA32_PAT, __rdmsr (IA32_PAT_MSR));
 
-   vmwrite (VMCS_GUEST_IA32_EFER, 
-                  __rdmsr (IA32_EFER_MSR));
+   vmwrite (VMCS_GUEST_IA32_EFER, __rdmsr (IA32_EFER_MSR));
 
-   vmwrite (VMCS_GUEST_IA32_BNDCFGS, 
-                  __rdmsr (IA32_BNDCFGS_MSR));
+   vmwrite (VMCS_GUEST_IA32_BNDCFGS, __rdmsr (IA32_BNDCFGS_MSR));
 
-   vmwrite (VMCS_GUEST_IA32_RTIT_CTL, 
-                  __rdmsr (IA32_RTIT_CTL_MSR));
+   vmwrite (VMCS_GUEST_IA32_RTIT_CTL, __rdmsr (IA32_RTIT_CTL_MSR));
 
-   vmwrite (VMCS_GUEST_IA32_LBR_CTL, 
-                  __rdmsr (IA32_LBR_CTL_MSR));
+   vmwrite (VMCS_GUEST_IA32_LBR_CTL, __rdmsr (IA32_LBR_CTL_MSR));
 
-   vmwrite (VMCS_GUEST_IA32_S_CET, 
-                  __rdmsr (IA32_S_CET_MSR));
+   vmwrite (VMCS_GUEST_IA32_S_CET, __rdmsr (IA32_S_CET_MSR));
 
-   vmwrite (VMCS_GUEST_IA32_INTERRUPT_SSP_TABLE_ADDR, 
-                  __rdmsr (IA32_INTERRUPT_SSP_TABLE_ADDR_MSR));
+   vmwrite (VMCS_GUEST_IA32_ISSPT_ADDR, __rdmsr (IA32_ISSPT_ADDR_MSR));
 
-   vmwrite (VMCS_GUEST_IA32_PKRS, 
-                  __rdmsr (IA32_PKRS_MSR));
+   vmwrite (VMCS_GUEST_IA32_PKRS, __rdmsr (IA32_PKRS_MSR));
 
    // Shadow-Stack Pointer (SSP) register
    vmwrite (VMCS_GUEST_SSP, 0);

@@ -27,7 +27,7 @@ size_assert (ia32_feature_control_t, 8);
 
 typedef union
 {
-   u64 value;
+   u64 ctl;
    struct
    {
       u64 vmcs_rev_ident     : 31;
@@ -41,7 +41,7 @@ typedef union
       u64 vmx_cap_support    : 1;
       u64 vm_entry_soft_he   : 1;
       u64 reserved_2         : 7;
-   } fields;
+   };
 } ia32_vmx_basic_t;
 size_assert (ia32_vmx_basic_t, 8);
 #define IA32_VMX_BASIC_MSR 0x480
@@ -108,13 +108,13 @@ size_assert (ia32_bndfcgs_t, 8);
 #define IA32_PERF_GLOBAL_CTRL_MSR 0x38F
 #define IA32_PAT_MSR 0x277
 #define IA32_S_CET_MSR 0x6A2
-#define IA32_INTERRUPT_SSP_TABLE_ADDR_MSR 0x6A8
+#define IA32_ISSPT_ADDR_MSR 0x6A8
 #define IA32_PKRS_MSR 0x6E1
 #define IA32_RTIT_CTL_MSR 0x570
 #define IA32_LBR_CTL_MSR 0x14CE
 
-#define IA32_FS_BASE 0xC0000100
-#define IA32_GS_BASE 0xC0000101
+#define IA32_FS_BASE_MSR 0xC0000100
+#define IA32_GS_BASE_MSR 0xC0000101
 
 typedef union
 {

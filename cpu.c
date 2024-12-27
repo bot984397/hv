@@ -1,6 +1,8 @@
 #define VCPU_DBG(fmt, ...) \
    LOG_DBG ("cpu %02d - " fmt, cur_logical_cpu (), ##__VA_ARGS__)
 
+#define KMALLOC_ALIGNED (LINUX_VERSION_CODE >= KERNEL_VERSION (5,4,0))
+
 #include <linux/cpumask.h>
 #include <linux/smp.h>
 #include <linux/slab.h>
@@ -77,11 +79,39 @@ static inline __attribute__((always_inline))
 void vcpu_set_rev_ident (vcpu_ctx_t *vcpu_ctx)
 {
    vcpu_ctx->vmxon_region->header.rev_ident =
-      vcpu_ctx->cached.vmx_basic.fields.vmcs_rev_ident;
+      vcpu_ctx->cached.vmx_basic.vmcs_rev_ident;
    vcpu_ctx->vmxon_region->header.reserved_0 = 0;
    vcpu_ctx->vmcs_region->header.rev_ident =
-      vcpu_ctx->cached.vmx_basic.fields.vmcs_rev_ident;
+      vcpu_ctx->cached.vmx_basic.vmcs_rev_ident;
    vcpu_ctx->vmcs_region->header.reserved_0 = 0;
+}
+
+static __attribute__((warn_unused_result)) 
+bool vcpu_alloc_vmx_region (vm_region_t **region, u64 *phys)
+{
+   ia32_vmx_basic_t vmx_basic = {0};
+   vmx_basic.ctl = __rdmsr (IA32_VMX_BASIC_MSR);
+#ifdef KMALLOC_ALIGNEDS
+   *region = kzalloc (vmx_basic.vmx_region_size, GFP_KERNEL);
+   if (*region == NULL)
+   {
+      kfree (*region);
+      return false;
+   }
+#else
+   *region = (vm_region_t *)mem_alloc_pages (0);
+   if (*region == NULL)
+   {
+      mem_free_pages ((unsigned long)*region, 0);
+      return false;
+   }
+#endif // KMALLOC_ALIGNED
+   *phys = mem_virt_to_phys (*region);
+   
+   (*region)->header.rev_ident = vmx_basic.vmcs_rev_ident;
+   (*region)->header.reserved_0 = 0;
+
+   return true;
 }
 
 __attribute__((warn_unused_result)) vcpu_ctx_t* vcpu_alloc (void)
@@ -94,19 +124,17 @@ __attribute__((warn_unused_result)) vcpu_ctx_t* vcpu_alloc (void)
       goto FAILURE;
    }
 
-   vcpu_ctx->vmxon_region = (vm_region_t *)mem_alloc_pages (0);
-   if (vcpu_ctx->vmxon_region == NULL)
+   if (!vcpu_alloc_vmx_region (&vcpu_ctx->vmxon_region, 
+                               &vcpu_ctx->vmxon_physical))
    {
       goto FAILURE;
    }
-   vcpu_ctx->vmxon_physical = mem_virt_to_phys (vcpu_ctx->vmxon_region);
 
-   vcpu_ctx->vmcs_region = (vm_region_t *)mem_alloc_pages (0);
-   if (vcpu_ctx->vmcs_region == NULL)
+   if (!vcpu_alloc_vmx_region (&vcpu_ctx->vmcs_region,
+                               &vcpu_ctx->vmcs_physical))
    {
       goto FAILURE;
    }
-   vcpu_ctx->vmcs_physical = mem_virt_to_phys (vcpu_ctx->vmcs_region);
 
    vcpu_ctx->bitmaps.io_bitmap_a = (u8 *)mem_alloc_pages (0);
    if (vcpu_ctx->bitmaps.io_bitmap_a == NULL)
@@ -132,36 +160,12 @@ __attribute__((warn_unused_result)) vcpu_ctx_t* vcpu_alloc (void)
    vcpu_ctx->bitmaps.msr_bitmaps_phys
       = mem_virt_to_phys (vcpu_ctx->bitmaps.msr_bitmaps);
 
-   vcpu_ctx->cached.vmx_basic.value = __rdmsr (IA32_VMX_BASIC_MSR);
-   vcpu_set_rev_ident (vcpu_ctx);
+   vcpu_ctx->cached.vmx_basic.ctl = __rdmsr (IA32_VMX_BASIC_MSR);
 
    return vcpu_ctx;
 
 FAILURE:
-   if (vcpu_ctx->vmxon_region)
-   {
-      mem_free_pages ((unsigned long)vcpu_ctx->vmxon_region, 0);
-   }
-   if (vcpu_ctx->vmcs_region)
-   {
-      mem_free_pages ((unsigned long)vcpu_ctx->vmcs_region, 0);
-   }
-   if (vcpu_ctx->bitmaps.io_bitmap_a)
-   {
-      mem_free_pages ((unsigned long)vcpu_ctx->bitmaps.io_bitmap_a, 0);
-   }
-   if (vcpu_ctx->bitmaps.io_bitmap_b)
-   {
-      mem_free_pages ((unsigned long)vcpu_ctx->bitmaps.io_bitmap_b, 0);
-   }
-   if (vcpu_ctx->bitmaps.msr_bitmaps)
-   {
-      mem_free_pages ((unsigned long)vcpu_ctx->bitmaps.msr_bitmaps, 0);
-   }
-   if (vcpu_ctx)
-   {
-      kfree (vcpu_ctx);
-   }
+   vcpu_free (vcpu_ctx);
    return NULL;
 }
 
@@ -172,9 +176,13 @@ void vcpu_free (vcpu_ctx_t *vcpu_ctx)
       return;
    }
 
+#ifdef KMALLOC_ALIGNEDS
+   if (vcpu_ctx->vmxon_region) kfree (vcpu_ctx->vmxon_region);
+   if (vcpu_ctx->vmcs_region) kfree (vcpu_ctx->vmcs_region);
+#else
    mem_free_pages_s ((unsigned long)vcpu_ctx->vmxon_region, 0);
    mem_free_pages_s ((unsigned long)vcpu_ctx->vmcs_region, 0);
-   
+#endif
    mem_free_pages_s ((unsigned long)vcpu_ctx->bitmaps.io_bitmap_a, 0);
    mem_free_pages_s ((unsigned long)vcpu_ctx->bitmaps.io_bitmap_b, 0);
    mem_free_pages_s ((unsigned long)vcpu_ctx->bitmaps.msr_bitmaps, 0);

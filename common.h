@@ -22,7 +22,7 @@
 #endif
 
 #define VMX_OK 0
-#define VMX_ERR(fn) ((fn) != 0)
+#define VMX_ERR(fn) ((fn) != VMX_OK)
 
 #include <linux/init.h>
 #include <linux/module.h>
@@ -89,9 +89,8 @@ struct _vm_region_t
       };
    } header;
    u32 abort_indicator;
-   u8 data[4096 - sizeof (u64)];
+   u8 data[];
 } __attribute__((packed));
-size_assert (vm_region_t, 4096);
 
 extern vmm_ctx_t *g_vmm_ctx;
 
