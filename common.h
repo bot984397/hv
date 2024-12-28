@@ -11,8 +11,8 @@
 
 #ifndef size_assert
 #define size_assert(obj, size) \
-   typedef char obj##__size_assert_[(!!(sizeof(obj)==size))*2-1]
-#endif
+   _Static_assert(sizeof(obj)==size,"size mismatch: " #obj)
+#endif // size_assert
 
 #ifdef LKM_DEBUG
 #define LOG_DBG(fmt, ...) \
@@ -23,6 +23,8 @@
 
 #define VMX_OK 0
 #define VMX_ERR(fn) ((fn) != VMX_OK)
+
+#define BITS(v) v / 8
 
 #include <linux/init.h>
 #include <linux/module.h>

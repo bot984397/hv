@@ -810,8 +810,20 @@ static void vmcs_setup_host (vcpu_ctx_t *vcpu_ctx)
    vmwrite (VMCS_HOST_RIP, 0);
 
    // Segment selectors
+   vmwrite (VMCS_HOST_CS_SELECTOR, read_cs () & VMCS_HOST_SELECTOR_MASK);
+   vmwrite (VMCS_HOST_SS_SELECTOR, read_ss () & VMCS_HOST_SELECTOR_MASK);
+   vmwrite (VMCS_HOST_DS_SELECTOR, read_ds () & VMCS_HOST_SELECTOR_MASK);
+   vmwrite (VMCS_HOST_ES_SELECTOR, read_es () & VMCS_HOST_SELECTOR_MASK);
+   vmwrite (VMCS_HOST_FS_SELECTOR, read_fs () & VMCS_HOST_SELECTOR_MASK);
+   vmwrite (VMCS_HOST_GS_SELECTOR, read_gs () & VMCS_HOST_SELECTOR_MASK);
+   vmwrite (VMCS_HOST_TR_SELECTOR, read_tr () & VMCS_HOST_SELECTOR_MASK);
 
    // Segment base addresses
+   vmwrite (VMCS_HOST_FS_BASE, __rdmsr (IA32_FS_BASE_MSR));
+   vmwrite (VMCS_HOST_GS_BASE, __rdmsr (IA32_GS_BASE_MSR));
+   vmwrite (VMCS_HOST_TR_BASE, 0);
+   vmwrite (VMCS_HOST_GDTR_BASE, 0);
+   vmwrite (VMCS_HOST_IDTR_BASE, 0);
 
    // MSRs
    vmwrite (VMCS_HOST_IA32_SYSENTER_CS, __rdmsr (IA32_SYSENTER_CS_MSR));
@@ -852,13 +864,13 @@ static void vmcs_setup_guest (vcpu_ctx_t *vcpu_ctx)
    vmwrite (VMCS_GUEST_RFLAGS, read_rflags ());
 
    // Segment selectors
-   vmwrite (VMCS_GUEST_CS_SELECTOR, 0);
-   vmwrite (VMCS_GUEST_SS_SELECTOR, 0);
-   vmwrite (VMCS_GUEST_DS_SELECTOR, 0);
-   vmwrite (VMCS_GUEST_ES_SELECTOR, 0);
-   vmwrite (VMCS_GUEST_FS_SELECTOR, 0);
-   vmwrite (VMCS_GUEST_GS_SELECTOR, 0);
-   vmwrite (VMCS_GUEST_TR_SELECTOR, 0);
+   vmwrite (VMCS_GUEST_CS_SELECTOR, read_cs ());
+   vmwrite (VMCS_GUEST_SS_SELECTOR, read_ss ());
+   vmwrite (VMCS_GUEST_DS_SELECTOR, read_ds ());
+   vmwrite (VMCS_GUEST_ES_SELECTOR, read_es ());
+   vmwrite (VMCS_GUEST_FS_SELECTOR, read_fs ());
+   vmwrite (VMCS_GUEST_GS_SELECTOR, read_gs ());
+   vmwrite (VMCS_GUEST_TR_SELECTOR, read_tr ());
    vmwrite (VMCS_GUEST_LDTR_SELECTOR, 0);
 
    // Segment base addresses - CS/SS/DS/ES fixed to 0 in long mode

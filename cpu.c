@@ -84,14 +84,12 @@ bool vcpu_alloc_vmx_region (vm_region_t **region, u64 *phys)
    *region = kzalloc (vmx_basic.vmx_region_size, GFP_KERNEL);
    if (*region == NULL)
    {
-      kfree (*region);
       return false;
    }
 #else
    *region = (vm_region_t *)mem_alloc_pages (0);
    if (*region == NULL)
    {
-      mem_free_pages ((unsigned long)*region, 0);
       return false;
    }
 #endif // KMALLOC_ALIGNED

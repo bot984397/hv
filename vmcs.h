@@ -3,6 +3,8 @@
 
 #include "common.h"
 
+#define VMCS_HOST_SELECTOR_MASK 0xF8
+
 __attribute__((warn_unused_result)) int vmcs_setup (vcpu_ctx_t *vcpu_ctx);
 
 typedef union
@@ -20,7 +22,7 @@ typedef union
       u32 reserved_2                      : 24;
    };
 } __vmx_pinbased_controls;
-size_assert (__vmx_pinbased_controls, 4);
+size_assert (__vmx_pinbased_controls, BITS(32));
 
 typedef union
 {
@@ -57,7 +59,7 @@ typedef union
       u32 activate_secondary_controls  : 1;
    };
 } __vmx_procbased_ctls;
-size_assert (__vmx_procbased_ctls, 4);
+size_assert (__vmx_procbased_ctls, BITS(32));
 
 typedef union
 {
@@ -98,7 +100,7 @@ typedef union
       u32 instruction_timeout             : 1;
    };
 } __vmx_procbased_ctls2;
-size_assert (__vmx_procbased_ctls2, 4);
+size_assert (__vmx_procbased_ctls2, BITS(32));
 
 typedef union
 {
@@ -116,7 +118,7 @@ typedef union
       u64 reserved_1                   : 56;
    };
 } __vmx_procbased_ctls3;
-size_assert (__vmx_procbased_ctls3, 8);
+size_assert (__vmx_procbased_ctls3, BITS(64));
 
 typedef union
 {
@@ -148,7 +150,7 @@ typedef union
       u32 activate_secondary_controls     : 1;
    };
 } __vmx_exit_ctls;
-size_assert (__vmx_exit_ctls, 4);
+size_assert (__vmx_exit_ctls, BITS(32));
 
 typedef union
 {
@@ -160,7 +162,7 @@ typedef union
       u32 reserved_1                      : 28;
    };
 } __vmx_exit_ctls2;
-size_assert (__vmx_exit_ctls2, 4);
+size_assert (__vmx_exit_ctls2, BITS(32));
 
 typedef union
 {
@@ -187,7 +189,7 @@ typedef union
       u32 reserved_3                         : 9;
    };
 } __vmx_entry_ctls;
-size_assert (__vmx_entry_ctls, 4);
+size_assert (__vmx_entry_ctls, BITS(32));
 
 typedef union
 {
@@ -219,7 +221,7 @@ typedef union
       u32 reserved_2                      : 10;
    };
 } __vmx_exception_bitmap;
-size_assert (__vmx_exception_bitmap, 4);
+size_assert (__vmx_exception_bitmap, BITS(32));
 
 typedef union
 {
@@ -239,6 +241,78 @@ typedef union
       u32 reserved_2       : 15;
    };
 } __segment_access_rights;
-size_assert (__segment_access_rights, 4);
+size_assert (__segment_access_rights, BITS(32));
+
+typedef union
+{
+   u16 ctl;
+   struct
+   {
+      u16 RPL     : 2;
+      u16 TI      : 1;
+      u16 index   : 13;
+   };
+} __segment_selector;
+
+typedef struct
+{
+   u16 limit_low;
+   u16 base_low;
+   union
+   {
+      u32 ctl;
+      struct
+      {
+         u32 base_mid               : 8;
+         u32 segment_type           : 4;
+         u32 descriptor_type        : 1;
+         u32 DPL                    : 2;
+         u32 present                : 1;
+         u32 limit_high             : 4;
+         u32 available_for_system   : 1;
+         u32 long_mode              : 1;
+         u32 DB                     : 1;
+         u32 granularity            : 1;
+         u32 base_high              : 8;
+      };
+   };
+} __segment_descriptor_32;
+size_assert (__segment_descriptor_32, BITS(64));
+
+typedef struct
+{
+   u16 limit_low;
+   u16 base_low;
+   union
+   {
+      u32 ctl0;
+      struct
+      {
+         u32 base_mid : 8;
+         u32 segment_type : 4;
+         u32 reserved_0 : 1;
+         u32 DPL : 2;
+         u32 present : 1;
+         u32 limit_high : 4;
+         u32 available_for_system : 1;
+         u32 reserved_1 : 1;
+         u32 reserved_2 : 1;
+         u32 granularity : 1;
+         u32 base_high : 8;
+      };
+   };
+   u32 base_upper;
+   union
+   {
+      u32 ctl1;
+      struct
+      {
+         u32 reserved_3 : 8;
+         u32 reserved_4 : 5;
+         u32 reserved_5 : 19;
+      };
+   };
+} __segment_descriptor_64;
+size_assert (__segment_descriptor_64, BITS(128));
 
 #endif // __LKM_VMCS_H__

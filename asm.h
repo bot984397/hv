@@ -163,8 +163,8 @@ static inline __attribute__((always_inline)) u16 read_tr (void)
    u16 v;
    __asm__ volatile
    (
-      "str %0"
-      : "=r" (v)
+      "str %[v]"
+      : [v] "=rm" (v)
    );
    return v;
 }
@@ -174,8 +174,8 @@ static inline __attribute__((always_inline)) u16 read_cs (void)
    u16 v;
    __asm__ volatile
    (
-      "mov %%cs, %0"
-      : "=r" (v)
+      "mov %%cs, %[v]"
+      : [v] "=rm" (v)
    );
    return v;
 }
@@ -185,8 +185,8 @@ static inline __attribute__((always_inline)) u16 read_ss (void)
    u16 v;
    __asm__ volatile
    (
-      "mov %%ss, %0"
-      : "=r" (v)
+      "mov %%ss, %[v]"
+      : [v] "=rm" (v)
    );
    return v;
 }
@@ -196,8 +196,8 @@ static inline __attribute__((always_inline)) u16 read_ds (void)
    u16 v;
    __asm__ volatile
    (
-      "mov %%ds, %0"
-      : "=r" (v)
+      "mov %%ds, %[v]"
+      : [v] "=rm" (v)
    );
    return v;
 }
@@ -207,8 +207,8 @@ static inline __attribute__((always_inline)) u16 read_es (void)
    u16 v;
    __asm__ volatile
    (
-      "mov %%es, %0"
-      : "=r" (v)
+      "mov %%es, %[v]"
+      : [v] "=rm" (v)
    );
    return v;
 }
@@ -218,8 +218,8 @@ static inline __attribute__((always_inline)) u16 read_fs (void)
    u16 v;
    __asm__ volatile
    (
-      "mov %%fs, %0"
-      : "=r" (v)
+      "mov %%fs, %[v]"
+      : [v] "=rm" (v)
    );
    return v;
 }
@@ -229,8 +229,8 @@ static inline __attribute__((always_inline)) u16 read_gs (void)
    u16 v;
    __asm__ volatile
    (
-      "mov %%gs, %0"
-      : "=r" (v)
+      "mov %%gs, %[v]"
+      : [v] "=rm" (v)
    );
    return v;
 }
