@@ -194,8 +194,7 @@ void vcpu_init (void *info)
    }
 
    vcpu_ctx_t *vcpu_ctx = g_vmm_ctx->vcpu_ctxs[this_cpu]; 
-   int err = vmxon (vcpu_ctx->vmxon_physical);
-   if (err != 0)
+   if (vmxon (vcpu_ctx->vmxon_physical) != 0)
    {
       VCPU_DBG ("[vmxon] failed");
       vmxoff ();

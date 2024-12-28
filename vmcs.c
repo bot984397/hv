@@ -932,35 +932,44 @@ static void vmcs_setup_guest (vcpu_ctx_t *vcpu_ctx)
    vmwrite (VMCS_GUEST_TR_SELECTOR, read_tr ());
    vmwrite (VMCS_GUEST_LDTR_SELECTOR, 0);
 
+   __pseudo_descriptor gdt = sgdt ();
+   __pseudo_descriptor idt = sidt ();
+
    // Segment base addresses - CS/SS/DS/ES fixed to 0 in long mode
-   vmwrite (VMCS_GUEST_CS_BASE, 0);
-   vmwrite (VMCS_GUEST_SS_BASE, 0);
-   vmwrite (VMCS_GUEST_DS_BASE, 0);
-   vmwrite (VMCS_GUEST_ES_BASE, 0);
+   vmwrite (VMCS_GUEST_CS_BASE, get_segment_base (gdt.base, read_cs ()));
+   vmwrite (VMCS_GUEST_SS_BASE, get_segment_base (gdt.base, read_ss ()));
+   vmwrite (VMCS_GUEST_DS_BASE, get_segment_base (gdt.base, read_ds ()));
+   vmwrite (VMCS_GUEST_ES_BASE, get_segment_base (gdt.base, read_es ()));
    vmwrite (VMCS_GUEST_FS_BASE, __rdmsr (IA32_FS_BASE_MSR));
    vmwrite (VMCS_GUEST_GS_BASE, __rdmsr (IA32_GS_BASE_MSR));
-   vmwrite (VMCS_GUEST_TR_BASE, 0);
-   vmwrite (VMCS_GUEST_LDTR_BASE, 0);
+   vmwrite (VMCS_GUEST_TR_BASE, get_segment_base (gdt.base, read_tr ()));
+   vmwrite (VMCS_GUEST_LDTR_BASE, get_segment_base (gdt.base, read_ldtr ()));
 
    // Segment limits - CS/SS/DS/ES fixed to 0 in long mode
-   vmwrite (VMCS_GUEST_CS_LIMIT, 0);
-   vmwrite (VMCS_GUEST_SS_LIMIT, 0);
-   vmwrite (VMCS_GUEST_DS_LIMIT, 0);
-   vmwrite (VMCS_GUEST_ES_LIMIT, 0);
+   vmwrite (VMCS_GUEST_CS_LIMIT, seglimit (read_cs ()));
+   vmwrite (VMCS_GUEST_SS_LIMIT, seglimit (read_ss ()));
+   vmwrite (VMCS_GUEST_DS_LIMIT, seglimit (read_ds ()));
+   vmwrite (VMCS_GUEST_ES_LIMIT, seglimit (read_es ()));
    vmwrite (VMCS_GUEST_FS_LIMIT, seglimit (read_fs ()));
    vmwrite (VMCS_GUEST_GS_LIMIT, seglimit (read_gs ()));
    vmwrite (VMCS_GUEST_TR_LIMIT, seglimit (read_tr ()));
    vmwrite (VMCS_GUEST_LDTR_LIMIT, seglimit (read_ldtr ()));
 
    // Access rights
-   vmwrite (VMCS_GUEST_CS_ACCESS_RIGHTS, 0);
-   vmwrite (VMCS_GUEST_SS_ACCESS_RIGHTS, 0);
-   vmwrite (VMCS_GUEST_DS_ACCESS_RIGHTS, 0);
-   vmwrite (VMCS_GUEST_ES_ACCESS_RIGHTS, 0);
-   vmwrite (VMCS_GUEST_FS_ACCESS_RIGHTS, 0);
-   vmwrite (VMCS_GUEST_GS_ACCESS_RIGHTS, 0);
-   vmwrite (VMCS_GUEST_TR_ACCESS_RIGHTS, 0);
-   vmwrite (VMCS_GUEST_LDTR_ACCESS_RIGHTS, 0);
+   vmwrite (VMCS_GUEST_CS_ACCESS_RIGHTS, get_access_rights (read_cs ()));
+   vmwrite (VMCS_GUEST_SS_ACCESS_RIGHTS, get_access_rights (read_ss ()));
+   vmwrite (VMCS_GUEST_DS_ACCESS_RIGHTS, get_access_rights (read_ds ()));
+   vmwrite (VMCS_GUEST_ES_ACCESS_RIGHTS, get_access_rights (read_es ()));
+   vmwrite (VMCS_GUEST_FS_ACCESS_RIGHTS, get_access_rights (read_fs ()));
+   vmwrite (VMCS_GUEST_GS_ACCESS_RIGHTS, get_access_rights (read_gs ()));
+   vmwrite (VMCS_GUEST_TR_ACCESS_RIGHTS, get_access_rights (read_tr ()));
+   vmwrite (VMCS_GUEST_LDTR_ACCESS_RIGHTS, get_access_rights (read_ldtr ()));
+
+   // GDTR and IDTR
+   vmwrite (VMCS_GUEST_GDTR_LIMIT, gdt.limit);
+   vmwrite (VMCS_GUEST_GDTR_BASE, gdt.base);
+   vmwrite (VMCS_GUEST_IDTR_LIMIT, idt.limit);
+   vmwrite (VMCS_GUEST_IDTR_BASE, idt.base);
 
    // MSRs
    vmwrite (VMCS_GUEST_IA32_DEBUGCTL, __rdmsr (IA32_DEBUGCTL_MSR));

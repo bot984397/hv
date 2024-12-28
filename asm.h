@@ -249,7 +249,7 @@ static inline __attribute__((always_inline)) u32 seglimit (u32 s)
    return v;
 }
 
-static inline __attribute__((always_inline)) u32 lar (u16 s)
+static inline __attribute__((always_inline)) u32 lar (u32 s)
 {
    u32 v;
    __asm__ __volatile__
