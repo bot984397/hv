@@ -225,32 +225,12 @@ size_assert (__vmx_exception_bitmap, BITS(32));
 
 typedef union
 {
-   u32 ctl;
-   struct
-   {
-      u32 segment_type     : 4;
-      u32 descriptor_type  : 1;
-      u32 DPL              : 2;
-      u32 P                : 1;
-      u32 reserved_0       : 4;
-      u32 AVL              : 1;
-      u32 reserved_1       : 1;
-      u32 DB               : 1;
-      u32 G                : 1;
-      u32 segment_unusable : 1;
-      u32 reserved_2       : 15;
-   };
-} __segment_access_rights;
-size_assert (__segment_access_rights, BITS(32));
-
-typedef union
-{
    u16 ctl;
    struct
    {
-      u16 RPL     : 2;
-      u16 TI      : 1;
-      u16 index   : 13;
+      u16 RPL              : 2;
+      u16 table_indicator  : 1;
+      u16 index            : 13;
    };
 } __segment_selector;
 
@@ -288,17 +268,17 @@ typedef struct
       u32 ctl0;
       struct
       {
-         u32 base_mid : 8;
-         u32 segment_type : 4;
-         u32 reserved_0 : 1;
-         u32 DPL : 2;
-         u32 present : 1;
-         u32 limit_high : 4;
-         u32 available_for_system : 1;
-         u32 reserved_1 : 1;
-         u32 reserved_2 : 1;
-         u32 granularity : 1;
-         u32 base_high : 8;
+         u32 base_mid               : 8;
+         u32 segment_type           : 4;
+         u32 reserved_0             : 1;
+         u32 DPL                    : 2;
+         u32 present                : 1;
+         u32 limit_high             : 4;
+         u32 available_for_system   : 1;
+         u32 reserved_1             : 1;
+         u32 reserved_2             : 1;
+         u32 granularity            : 1;
+         u32 base_high              : 8;
       };
    };
    u32 base_upper;
@@ -314,5 +294,25 @@ typedef struct
    };
 } __segment_descriptor_64;
 size_assert (__segment_descriptor_64, BITS(128));
+
+typedef union
+{
+   u32 ctl;
+   struct
+   {
+      u32 segment_type     : 4;
+      u32 descriptor_type  : 1;
+      u32 DPL              : 2;
+      u32 segment_present  : 1;
+      u32 reserved_0       : 4;
+      u32 AVL              : 1;
+      u32 reserved_1       : 1;
+      u32 DB               : 1;
+      u32 granularity      : 1;
+      u32 segment_unusable : 1;
+      u32 reserved_2       : 15;
+   };
+} __segment_access_rights;
+size_assert (__segment_access_rights, BITS(32));
 
 #endif // __LKM_VMCS_H__
