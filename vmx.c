@@ -1,8 +1,8 @@
 #include <linux/types.h>
 
 #include "vmx.h"
-#include "asm.h"
 #include "enc.h"
+#include "intrin.h"
 
 typedef struct
 {

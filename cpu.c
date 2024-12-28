@@ -14,9 +14,9 @@
 #include "crx.h"
 #include "msr.h"
 #include "mem.h"
-#include "asm.h"
 #include "enc.h"
 #include "vmcs.h"
+#include "intrin.h"
 #include "common.h"
 
 int max_logical_cpu (void)

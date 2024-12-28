@@ -5,7 +5,6 @@
 #include "vmm.h"
 #include "cpu.h"
 #include "msr.h"
-#include "asm.h"
 #include "vmcs.h"
 #include "common.h"
 #include "hotplug.h"

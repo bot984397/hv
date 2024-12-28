@@ -2,12 +2,12 @@
 #include <asm/msr.h>
 
 #include "vmcs.h"
-#include "asm.h"
 #include "msr.h"
 #include "enc.h"
 #include "mem.h"
 #include "vmx.h"
 #include "crx.h"
+#include "intrin.h"
 #include "common.h"
 
 static void vmcs_adjust_controls (u32 *ctl, u32 cap)
