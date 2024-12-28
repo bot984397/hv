@@ -624,6 +624,62 @@ static void vmcs_setup_msr_bitmaps (vcpu_ctx_t *vcpu_ctx)
    vmcs_set_msr_bitmap_single (0xC0001FFF, false, vcpu_ctx);
 }
 
+static u32 get_access_rights (u16 seg)
+{
+   __segment_selector selector;
+   __segment_access_rights ar;
+
+   selector.ctl = seg;
+
+   if (selector.table_indicator == 0 && selector.index == 0)
+   {
+      ar.ctl = 0;
+      ar.segment_unusable = 1;
+      return ar.ctl;
+   }
+
+   ar.ctl = (lar (seg) >> 8);
+   ar.segment_unusable = 0;
+   ar.reserved_0 = 0;
+   ar.reserved_1 = 0;
+
+   return ar.ctl;
+}
+
+static u64 get_segment_base (u64 gdt_base, u16 seg)
+{
+   u64 seg_base;
+   __segment_selector selector;
+   __segment_descriptor_32 *descriptor;
+   __segment_descriptor_32 *descriptor_table;
+
+   selector.ctl = seg;
+
+   if (selector.table_indicator == 0 && selector.index == 0)
+   {
+      seg_base = 0;
+      return seg_base;
+   }
+
+   descriptor_table = (__segment_descriptor_32 *)gdt_base;
+   descriptor = &descriptor_table[selector.index];
+
+   seg_base = (u64)((descriptor->base_high & 0xFF000000) |
+            ((descriptor->base_mid << 16) & 0x00FF0000) |
+            ((descriptor->base_low >> 16) & 0x0000FFFF));
+
+   if ((descriptor->available_for_system == 0) &&
+         ((descriptor->descriptor_type == TSS_AVAILABLE) ||
+         (descriptor->descriptor_type == TSS_BUSY)))
+   {
+      __segment_descriptor_64 *expanded_descriptor;
+      expanded_descriptor = (__segment_descriptor_64 *)descriptor;
+      seg_base |= ((u64)expanded_descriptor->base_upper << 32);
+   }
+
+   return seg_base;
+}
+
 static void vmcs_setup_control (vcpu_ctx_t *vcpu_ctx)
 {
    __vmx_pinbased_controls pinbased_ctl;
@@ -819,11 +875,14 @@ static void vmcs_setup_host (vcpu_ctx_t *vcpu_ctx)
    vmwrite (VMCS_HOST_TR_SELECTOR, read_tr () & VMCS_HOST_SELECTOR_MASK);
 
    // Segment base addresses
+   __pseudo_descriptor gdt = sgdt ();
+   __pseudo_descriptor idt = sidt ();
+
    vmwrite (VMCS_HOST_FS_BASE, __rdmsr (IA32_FS_BASE_MSR));
    vmwrite (VMCS_HOST_GS_BASE, __rdmsr (IA32_GS_BASE_MSR));
-   vmwrite (VMCS_HOST_TR_BASE, 0);
-   vmwrite (VMCS_HOST_GDTR_BASE, 0);
-   vmwrite (VMCS_HOST_IDTR_BASE, 0);
+   vmwrite (VMCS_HOST_TR_BASE, get_segment_base (gdt.base, read_tr ()));
+   vmwrite (VMCS_HOST_GDTR_BASE, gdt.base);
+   vmwrite (VMCS_HOST_IDTR_BASE, idt.base);
 
    // MSRs
    vmwrite (VMCS_HOST_IA32_SYSENTER_CS, __rdmsr (IA32_SYSENTER_CS_MSR));

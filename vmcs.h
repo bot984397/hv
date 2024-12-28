@@ -5,6 +5,9 @@
 
 #define VMCS_HOST_SELECTOR_MASK 0xF8
 
+#define TSS_AVAILABLE 0x9
+#define TSS_BUSY 0xB
+
 __attribute__((warn_unused_result)) int vmcs_setup (vcpu_ctx_t *vcpu_ctx);
 
 typedef union
@@ -306,13 +309,21 @@ typedef union
       u32 segment_present  : 1;
       u32 reserved_0       : 4;
       u32 AVL              : 1;
-      u32 reserved_1       : 1;
+      u32 long_mode        : 1;
       u32 DB               : 1;
       u32 granularity      : 1;
       u32 segment_unusable : 1;
-      u32 reserved_2       : 15;
+      u32 reserved_1       : 15;
    };
 } __segment_access_rights;
 size_assert (__segment_access_rights, BITS(32));
+
+typedef struct pseudo_descriptor __pseudo_descriptor;
+struct __attribute__((packed)) pseudo_descriptor
+{
+   u16 limit;
+   u64 base;
+};
+size_assert (__pseudo_descriptor, BITS(80));
 
 #endif // __LKM_VMCS_H__

@@ -3,6 +3,7 @@
 
 #include <linux/types.h>
 #include "common.h"
+#include "vmcs.h"
 
 static inline __attribute__((always_inline)) u8 vmxon (u64 p)
 {
@@ -109,22 +110,22 @@ static inline __attribute__((always_inline)) u64 __read_dr (unsigned int reg)
    switch (reg)
    {
       case 0:
-         __asm__ volatile ("mov %%dr0, %0" : "=r" (value));
+         __asm__ __volatile__ ("mov %%dr0, %0" : "=r" (value));
          break;
       case 1:
-         __asm__ volatile ("mov %%dr1, %0" : "=r" (value));
+         __asm__ __volatile__ ("mov %%dr1, %0" : "=r" (value));
          break;
       case 2: 
-         __asm__ volatile ("mov %%dr2, %0" : "=r" (value));
+         __asm__ __volatile__ ("mov %%dr2, %0" : "=r" (value));
          break;
       case 3:
-         __asm__ volatile ("mov %%dr3, %0" : "=r" (value));
+         __asm__ __volatile__ ("mov %%dr3, %0" : "=r" (value));
          break;
       case 6:
-         __asm__ volatile ("mov %%dr6, %0" : "=r" (value));
+         __asm__ __volatile__ ("mov %%dr6, %0" : "=r" (value));
          break;
       case 7:
-         __asm__ volatile ("mov %%dr7, %0" : "=r" (value));
+         __asm__ __volatile__ ("mov %%dr7, %0" : "=r" (value));
          break;
       default:
          return 0;
@@ -136,7 +137,7 @@ static inline __attribute__((always_inline)) u64 __read_dr (unsigned int reg)
 static inline __attribute__((always_inline)) u64 read_rflags (void)
 {
    u64 v;
-   __asm__ volatile
+   __asm__ __volatile__
    (
       "pushfq;"
       "popq %0;"
@@ -150,7 +151,7 @@ static inline __attribute__((always_inline)) u64 read_rflags (void)
 static inline __attribute__((always_inline)) u16 read_ldtr (void)
 {
    u16 v;
-   __asm__ volatile
+   __asm__ __volatile__
    (
       "sldt %0"
       : "=r" (v)
@@ -161,7 +162,7 @@ static inline __attribute__((always_inline)) u16 read_ldtr (void)
 static inline __attribute__((always_inline)) u16 read_tr (void)
 {
    u16 v;
-   __asm__ volatile
+   __asm__ __volatile__
    (
       "str %[v]"
       : [v] "=rm" (v)
@@ -172,7 +173,7 @@ static inline __attribute__((always_inline)) u16 read_tr (void)
 static inline __attribute__((always_inline)) u16 read_cs (void)
 {
    u16 v;
-   __asm__ volatile
+   __asm__ __volatile__
    (
       "mov %%cs, %[v]"
       : [v] "=rm" (v)
@@ -183,7 +184,7 @@ static inline __attribute__((always_inline)) u16 read_cs (void)
 static inline __attribute__((always_inline)) u16 read_ss (void)
 {
    u16 v;
-   __asm__ volatile
+   __asm__ __volatile__
    (
       "mov %%ss, %[v]"
       : [v] "=rm" (v)
@@ -194,7 +195,7 @@ static inline __attribute__((always_inline)) u16 read_ss (void)
 static inline __attribute__((always_inline)) u16 read_ds (void)
 {
    u16 v;
-   __asm__ volatile
+   __asm__ __volatile__
    (
       "mov %%ds, %[v]"
       : [v] "=rm" (v)
@@ -205,7 +206,7 @@ static inline __attribute__((always_inline)) u16 read_ds (void)
 static inline __attribute__((always_inline)) u16 read_es (void)
 {
    u16 v;
-   __asm__ volatile
+   __asm__ __volatile__
    (
       "mov %%es, %[v]"
       : [v] "=rm" (v)
@@ -216,7 +217,7 @@ static inline __attribute__((always_inline)) u16 read_es (void)
 static inline __attribute__((always_inline)) u16 read_fs (void)
 {
    u16 v;
-   __asm__ volatile
+   __asm__ __volatile__
    (
       "mov %%fs, %[v]"
       : [v] "=rm" (v)
@@ -227,7 +228,7 @@ static inline __attribute__((always_inline)) u16 read_fs (void)
 static inline __attribute__((always_inline)) u16 read_gs (void)
 {
    u16 v;
-   __asm__ volatile
+   __asm__ __volatile__
    (
       "mov %%gs, %[v]"
       : [v] "=rm" (v)
@@ -238,12 +239,50 @@ static inline __attribute__((always_inline)) u16 read_gs (void)
 static inline __attribute__((always_inline)) u32 seglimit (u32 s)
 {
    u32 v;
-   __asm__ volatile
+   __asm__ __volatile__
    (
       "lsl %[v], %[s]"
       : [v] "=r" (v)
       : [s] "rm" (s)
       : "cc", "memory"
+   );
+   return v;
+}
+
+static inline __attribute__((always_inline)) u32 lar (u16 s)
+{
+   u32 v;
+   __asm__ __volatile__
+   (
+      "lar %[v], %[s];"
+      "jz 1f;"
+      "xor %[v], %[v];"
+      "1:"
+      : [v] "=r" (v)
+      : [s] "r" (s)
+      : "cc"
+   );
+   return v;
+}
+
+static inline __attribute__((always_inline)) __pseudo_descriptor sgdt (void)
+{
+   __pseudo_descriptor v;
+   __asm__ __volatile__
+   (
+      "sgdt %[v]"
+      : [v] "=m" (v)
+   );
+   return v;
+}
+
+static inline __attribute__((always_inline)) __pseudo_descriptor sidt (void)
+{
+   __pseudo_descriptor v;
+   __asm__ __volatile__
+   (
+      "sidt %[v]"
+      : [v] "=m" (v)
    );
    return v;
 }
