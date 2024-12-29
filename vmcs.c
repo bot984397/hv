@@ -10,6 +10,8 @@
 #include "intrin.h"
 #include "common.h"
 
+static bool vmcs_run_checks (void);
+
 static void vmcs_adjust_controls (u32 *ctl, u32 cap)
 {
    ia32_generic_cap_msr cap_msr = {0};
@@ -1059,4 +1061,10 @@ int vmcs_setup (vcpu_ctx_t *vcpu_ctx)
    }
 
    return 1;
+}
+
+static bool vmcs_run_checks (void)
+{
+   
+   return false;
 }
