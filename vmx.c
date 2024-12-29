@@ -41,7 +41,7 @@ static const int vmx_err_map_sz = (sizeof (vmx_err_map) / sizeof (__vmx_err));
 
 static const char* vmx_error_internal (u64 err)
 {
-   for (u64 i = 0; i < vmx_err_map_sz; i++)
+   for (register u64 i = 0; i < vmx_err_map_sz; i++)
    {
       if (vmx_err_map[i].err == err)
       {
