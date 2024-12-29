@@ -2,6 +2,7 @@
 #include <asm/msr.h>
 
 #include "vmcs.h"
+#include "cpu.h"
 #include "msr.h"
 #include "enc.h"
 #include "mem.h"
@@ -10,7 +11,29 @@
 #include "intrin.h"
 #include "common.h"
 
-static bool vmcs_run_checks (void);
+static void print_bits (u32 in)
+{
+   LOG_DBG ("┌──────────────────────────────────────────────────────────────────┐");
+   LOG_DBG ("│  00  01  02  03  04  05  06  07  08  09  10  11  12  13  14  15  │");
+   LOG_DBG ("├──────────────────────────────────────────────────────────────────┤");
+   LOG_DBG ("│  %-4u%-4u%-4u%-4u%-4u%-4u%-4u%-4u%-4u%-4u%-4u%-4u%-4u%-4u%-4u%-4u│",
+         (in >> 0) & 1, (in >> 1) & 1, (in >> 2) & 1, (in >> 3) & 1,
+         (in >> 4) & 1, (in >> 5) & 1, (in >> 6) & 1, (in >> 7) & 1,
+         (in >> 8) & 1, (in >> 9) & 1, (in >> 10) & 1, (in >> 11) & 1,
+         (in >> 12) & 1, (in >> 13) & 1, (in >> 14) & 1, (in >> 15) & 1);
+   LOG_DBG ("└──────────────────────────────────────────────────────────────────┘");
+   LOG_DBG ("┌──────────────────────────────────────────────────────────────────┐");
+   LOG_DBG ("│  16  17  18  19  20  21  22  23  24  25  26  27  28  29  30  31  │");
+   LOG_DBG ("├──────────────────────────────────────────────────────────────────┤");
+   LOG_DBG ("│  %-4u%-4u%-4u%-4u%-4u%-4u%-4u%-4u%-4u%-4u%-4u%-4u%-4u%-4u%-4u%-4u│",
+         (in >> 16) & 1, (in >> 17) & 1, (in >> 18) & 1, (in >> 19) & 1,
+         (in >> 20) & 1, (in >> 21) & 1, (in >> 22) & 1, (in >> 23) & 1,
+         (in >> 24) & 1, (in >> 25) & 1, (in >> 26) & 1, (in >> 27) & 1,
+         (in >> 28) & 1, (in >> 29) & 1, (in >> 30) & 1, (in >> 31) & 1);
+   LOG_DBG ("└──────────────────────────────────────────────────────────────────┘");
+}
+
+static bool vmcs_run_checks (vcpu_ctx_t *vcpu_ctx);
 
 static void vmcs_adjust_controls (u32 *ctl, u32 cap)
 {
@@ -1054,17 +1077,101 @@ int vmcs_setup (vcpu_ctx_t *vcpu_ctx)
 
    vmcs_setup_guest (vcpu_ctx);
 
+   vmcs_run_checks (vcpu_ctx);
+
    if (VMX_ERR (vmlaunch ()))
    {
-      LOG_DBG ("VMLAUNCH: %s", vmx_get_error_message ());
+      //LOG_DBG ("VMLAUNCH: %s", vmx_get_error_message ());
       return 0;
    }
 
    return 1;
 }
 
-static bool vmcs_run_checks (void)
+static bool vmcs_check_control_32 (u32 ctl, ia32_generic_cap_msr cap)
 {
-   
-   return false;
+   return !((ctl & cap.split.allowed_0) != cap.split.allowed_0 || (ctl & ~cap.split.allowed_1) != 0);
+}
+
+static bool vmcs_run_checks (vcpu_ctx_t *vcpu_ctx)
+{
+   // checks on vmx controls [28.2.1]
+   ia32_generic_cap_msr cap = {0};
+
+   __vmx_pinbased_controls pinbased = {0};
+   pinbased.ctl = fvmread (VMCS_CTRL_PINBASED_CONTROLS);
+   cap.value = __rdmsr (IA32_VMX_TRUE_PINBASED_CTLS_MSR);
+   if (!vmcs_check_control_32 (pinbased.ctl, cap))
+   {
+      VCPU_DBG ("pinbased controls ERR");
+      return false;
+   }
+
+   __vmx_procbased_ctls procbased = {0};
+   procbased.ctl = fvmread (VMCS_CTRL_PROCBASED_CTLS);
+   cap.value = __rdmsr (IA32_VMX_TRUE_PROCBASED_CTLS_MSR);
+   if (!vmcs_check_control_32 (procbased.ctl, cap))
+   {
+      VCPU_DBG ("procbased controls ERR");
+      return false;
+   }
+
+   if (procbased.activate_secondary_controls == 1)
+   {
+      __vmx_procbased_ctls2 procbased2 = {0};
+      procbased2.ctl = fvmread (VMCS_CTRL_PROCBASED_CTLS2);
+      cap.value = __rdmsr (IA32_VMX_PROCBASED_CTLS2_MSR);
+      if (!vmcs_check_control_32 (procbased2.ctl, cap))
+      {
+         VCPU_DBG ("procbased controls 2 ERR");
+         return false;
+      }
+   }
+
+   if (procbased.activate_tertiary_controls == 1)
+   {
+      __vmx_procbased_ctls3 procbased3 = {0};
+      procbased3.ctl = fvmread (VMCS_CTRL_PROCBASED_CTLS3);
+      cap.value = __rdmsr (IA32_VMX_PROCBASED_CTLS2_MSR);
+      if (!vmcs_check_control_32 (procbased3.ctl, cap))
+      {
+         VCPU_DBG ("procbased controls 3 ERR");
+         return false;
+      }
+   }
+
+   if (fvmread (VMCS_CTRL_CR3_TARGET_COUNT) > 4)
+   {
+      VCPU_DBG ("invalid CR3 target count");
+      return false;
+   }
+
+   if (vcpu_ctx->bitmaps.io_bitmap_a_phys & 0xFFF)
+   {
+      VCPU_DBG ("io bitmap a misaligned");
+      return false;
+   }
+
+   if (vcpu_ctx->bitmaps.io_bitmap_b_phys & 0xFFF)
+   {
+      VCPU_DBG ("io bitmap b misaligned");
+      return false;
+   }
+
+   if (vcpu_ctx->bitmaps.msr_bitmaps_phys & 0xFFF)
+   {
+      VCPU_DBG ("msr bitmaps misaligned");
+   }
+
+   if (procbased.use_tpr_shadow == 1)
+   {
+      if (fvmread (VMCS_CTRL_VIRTUAL_APIC_ADDRESS) & 0xFFF)
+      {
+         VCPU_DBG ("virtual apic address misaligned");
+         return false;
+      }
+   }
+
+   VCPU_DBG ("VMCS region OK");
+   return true;
 }

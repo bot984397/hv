@@ -4,6 +4,9 @@
 #include "common.h"
 #include "vmm.h"
 
+#define VCPU_DBG(fmt, ...) \
+   LOG_DBG ("cpu %02d - " fmt, cur_logical_cpu (), ##__VA_ARGS__)
+
 vcpu_ctx_t* vcpu_ctx_from_cpu_num (u32 cpu_num);
 
 int max_logical_cpu (void);

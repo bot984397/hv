@@ -1,6 +1,3 @@
-#define VCPU_DBG(fmt, ...) \
-   LOG_DBG ("cpu %02d - " fmt, cur_logical_cpu (), ##__VA_ARGS__)
-
 #define KMALLOC_ALIGNED (LINUX_VERSION_CODE >= KERNEL_VERSION (5,4,0))
 
 #include <linux/cpumask.h>
