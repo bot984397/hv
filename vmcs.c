@@ -13,19 +13,20 @@
 
 static bool vmcs_run_checks (vcpu_ctx_t *vcpu_ctx);
 
-static void vmcs_adjust_controls (u32 *ctl, u32 cap)
+static void vmcs_adjust_controls (u32 *ctl, u64 cap)
 {
    ia32_generic_cap_msr cap_msr = {0};
-   cap_msr.value = __rdmsr (cap);
+   cap_msr.ctl = cap;
 
-   *ctl |= cap_msr.split.allowed_0;
-   *ctl &= cap_msr.split.allowed_1;
+   *ctl |= cap_msr.allowed_0;
+   *ctl &= cap_msr.allowed_1;
 }
 
-static void vmcs_adjust_controls_ex (u32 *ctl, u32 cap1, u32 cap2, bool t)
-{
-   vmcs_adjust_controls (ctl, t == true ? cap2 : cap1);
-}
+#define vmcs_adjust_controls_ex(cap, ctls, type, vcpu) \
+   cap.ctl = __rdmsr (vcpu->cached.vmx_basic.vmx_cap_support == 1 \
+         ? IA32_VMX_TRUE_##type##_CTLS_MSR \
+         : IA32_VMX_##type##_CTLS_MSR); \
+   vmcs_adjust_controls (ctls, cap.ctl);
 
 static __vmx_pinbased_controls vmcs_setup_pinbased_ctls (void)
 {
@@ -692,22 +693,16 @@ static void vmcs_setup_control (vcpu_ctx_t *vcpu_ctx)
    __vmx_entry_ctls entry_ctl;
    __vmx_exception_bitmap exception_bitmap;
 
-   u8 true_controls = vcpu_ctx->cached.vmx_basic.vmx_cap_support;
+   ia32_generic_cap_msr cap = {0};
 
    // pinbased vm-execution controls
    pinbased_ctl = vmcs_setup_pinbased_ctls ();
-   vmcs_adjust_controls_ex (&pinbased_ctl.ctl, 
-                            IA32_VMX_PINBASED_CTLS_MSR, 
-                            IA32_VMX_TRUE_PINBASED_CTLS_MSR, 
-                            true_controls);
-   vmwrite (VMCS_CTRL_PINBASED_CONTROLS, pinbased_ctl.ctl);
+   vmcs_adjust_controls_ex (cap, &pinbased_ctl.ctl, PINBASED, vcpu_ctx);
+   vmwrite (VMCS_CTRL_PINBASED_CTLS, pinbased_ctl.ctl);
 
    // primary processor based vm-execution controls
    procbased_ctl = vmcs_setup_primary_procbased_ctls ();
-   vmcs_adjust_controls_ex (&procbased_ctl.ctl,
-                            IA32_VMX_PROCBASED_CTLS_MSR,
-                            IA32_VMX_TRUE_PROCBASED_CTLS_MSR,
-                            true_controls);
+   vmcs_adjust_controls_ex (cap, &procbased_ctl.ctl, PROCBASED, vcpu_ctx);
    vmwrite (VMCS_CTRL_PROCBASED_CTLS, procbased_ctl.ctl);
 
    // secondary processor based vm-execution controls
@@ -717,18 +712,12 @@ static void vmcs_setup_control (vcpu_ctx_t *vcpu_ctx)
 
    // primary vm-exit controls
    exit_ctl = vmcs_setup_primary_exit_ctls ();
-   vmcs_adjust_controls_ex (&exit_ctl.ctl,
-                            IA32_VMX_EXIT_CTLS_MSR,
-                            IA32_VMX_TRUE_EXIT_CTLS_MSR,
-                            true_controls);
+   vmcs_adjust_controls_ex (cap, &exit_ctl.ctl, EXIT, vcpu_ctx);
    vmwrite (VMCS_CTRL_PRIMARY_VMEXIT_CONTROLS, exit_ctl.ctl);
 
    // vm-entry controls
    entry_ctl = vmcs_setup_entry_ctls ();
-   vmcs_adjust_controls_ex (&entry_ctl.ctl,
-                            IA32_VMX_ENTRY_CTLS_MSR,
-                            IA32_VMX_TRUE_ENTRY_CTLS_MSR,
-                            true_controls);
+   vmcs_adjust_controls_ex (cap, &entry_ctl.ctl, ENTRY, vcpu_ctx);
    vmwrite (VMCS_CTRL_VMENTRY_CONTROLS, entry_ctl.ctl);
 
    // exception bitmap
@@ -1059,7 +1048,7 @@ int vmcs_setup (vcpu_ctx_t *vcpu_ctx)
 
    if (VMX_ERR (vmlaunch ()))
    {
-      //LOG_DBG ("VMLAUNCH: %s", vmx_get_error_message ());
+      LOG_DBG ("VMLAUNCH: %s", vmx_get_error_message ());
       return 0;
    }
 
@@ -1068,7 +1057,7 @@ int vmcs_setup (vcpu_ctx_t *vcpu_ctx)
 
 static bool vmcs_check_control_32 (u32 ctl, ia32_generic_cap_msr cap)
 {
-   return !((ctl & cap.split.allowed_0) != cap.split.allowed_0 || (ctl & ~cap.split.allowed_1) != 0);
+   return !((ctl & cap.allowed_0) != cap.allowed_0 || (ctl & ~cap.allowed_1) != 0);
 }
 
 static bool vmcs_run_checks (vcpu_ctx_t *vcpu_ctx)
@@ -1077,8 +1066,8 @@ static bool vmcs_run_checks (vcpu_ctx_t *vcpu_ctx)
    ia32_generic_cap_msr cap = {0};
 
    __vmx_pinbased_controls pinbased = {0};
-   pinbased.ctl = fvmread (VMCS_CTRL_PINBASED_CONTROLS);
-   cap.value = __rdmsr (IA32_VMX_TRUE_PINBASED_CTLS_MSR);
+   pinbased.ctl = fvmread (VMCS_CTRL_PINBASED_CTLS);
+   cap.ctl = __rdmsr (IA32_VMX_TRUE_PINBASED_CTLS_MSR);
    if (!vmcs_check_control_32 (pinbased.ctl, cap))
    {
       VCPU_DBG ("pinbased controls ERR");
@@ -1087,7 +1076,7 @@ static bool vmcs_run_checks (vcpu_ctx_t *vcpu_ctx)
 
    __vmx_procbased_ctls procbased = {0};
    procbased.ctl = fvmread (VMCS_CTRL_PROCBASED_CTLS);
-   cap.value = __rdmsr (IA32_VMX_TRUE_PROCBASED_CTLS_MSR);
+   cap.ctl = __rdmsr (IA32_VMX_TRUE_PROCBASED_CTLS_MSR);
    if (!vmcs_check_control_32 (procbased.ctl, cap))
    {
       VCPU_DBG ("procbased controls ERR");
@@ -1098,7 +1087,7 @@ static bool vmcs_run_checks (vcpu_ctx_t *vcpu_ctx)
    {
       __vmx_procbased_ctls2 procbased2 = {0};
       procbased2.ctl = fvmread (VMCS_CTRL_PROCBASED_CTLS2);
-      cap.value = __rdmsr (IA32_VMX_PROCBASED_CTLS2_MSR);
+      cap.ctl = __rdmsr (IA32_VMX_PROCBASED_CTLS2_MSR);
       if (!vmcs_check_control_32 (procbased2.ctl, cap))
       {
          VCPU_DBG ("procbased controls 2 ERR");
@@ -1110,7 +1099,7 @@ static bool vmcs_run_checks (vcpu_ctx_t *vcpu_ctx)
    {
       __vmx_procbased_ctls3 procbased3 = {0};
       procbased3.ctl = fvmread (VMCS_CTRL_PROCBASED_CTLS3);
-      cap.value = __rdmsr (IA32_VMX_PROCBASED_CTLS2_MSR);
+      cap.ctl = __rdmsr (IA32_VMX_PROCBASED_CTLS2_MSR);
       if (!vmcs_check_control_32 (procbased3.ctl, cap))
       {
          VCPU_DBG ("procbased controls 3 ERR");

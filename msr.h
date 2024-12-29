@@ -132,12 +132,12 @@ typedef union
 
 typedef union
 {
-   u64 value;
+   u64 ctl;
    struct
    {
       u32 allowed_0;
       u32 allowed_1;
-   } split;
+   };
 } ia32_generic_cap_msr;
 #define IA32_VMX_PINBASED_CTLS_MSR 0x481
 #define IA32_VMX_TRUE_PINBASED_CTLS_MSR 0x48D

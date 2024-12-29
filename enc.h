@@ -220,7 +220,7 @@ typedef enum
    ENC_VMCS_COMPONENT_FULL_64 (3, host_state)
 
 // 32-bit fields (control)
-#define VMCS_CTRL_PINBASED_CONTROLS \
+#define VMCS_CTRL_PINBASED_CTLS \
    ENC_VMCS_COMPONENT_FULL_32 (0, control)
 #define VMCS_CTRL_PROCBASED_CTLS \
    ENC_VMCS_COMPONENT_FULL_32 (1, control)
