@@ -83,4 +83,7 @@ enum __vmx_exit_reasons
    exit_wrmsrlist
 };
 
+int vmexit_handler (void);
+void vmresume_error_handler (void);
+
 #endif // __LKM_VMX_H__

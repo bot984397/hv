@@ -7,7 +7,6 @@
 #else
 #include <linux/cpuhotplug.h>
 #endif
-#include <asm/special_insns.h>
 #include <asm/cpufeature.h>
 
 #include "common.h"

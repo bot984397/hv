@@ -4,7 +4,6 @@
 #include <linux/smp.h>
 #include <linux/slab.h>
 #include <linux/version.h>
-#include <asm/special_insns.h>
 #include <asm/cpufeature.h>
 
 #include "cpu.h"
@@ -54,20 +53,20 @@ bool vcpu_enable_vmx (void)
       __wrmsr (IA32_FEATURE_CONTROL_MSR, (feat_ctl.ctl >> 32), feat_ctl.ctl);
    }
 
-   cr4.ctl = __read_cr4 ();
+   cr4.ctl = readcr4 ();
    cr4.VMXE = 1;
    fixed.ctl = __rdmsr (IA32_VMX_CR4_FIXED0_MSR);
    cr4.ctl |= fixed.split.low;
    fixed.ctl = __rdmsr (IA32_VMX_CR4_FIXED1_MSR);
    cr4.ctl &= fixed.split.low;
-   __write_cr4 (cr4.ctl);
+   writecr4 (cr4.ctl);
 
-   cr0.value = __read_cr0 ();
+   cr0.value = readcr0 ();
    fixed.ctl = __rdmsr (IA32_VMX_CR0_FIXED0_MSR);
    cr0.value |= fixed.split.low;
    fixed.ctl = __rdmsr (IA32_VMX_CR0_FIXED1_MSR);
    cr0.value &= fixed.split.low;
-   __write_cr0 (cr0.value);
+   writecr0 (cr0.value);
 
    return true;
 }
@@ -212,4 +211,9 @@ void vcpu_restore (void *info)
 {
    vmxoff ();
    VCPU_DBG ("[vmxoff] executed");
+}
+
+int cpu_init_single (void)
+{
+   return 0;
 }

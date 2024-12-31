@@ -714,12 +714,12 @@ static bool vmcs_setup_control (vcpu_ctx_t *vcpu_ctx)
 
    // CR0 and CR4 shadowing / guest-host masks
    e |= vmwrite (VMCS_CTRL_CR0_GUEST_HOST_MASK, 0);
-   e |= vmwrite (VMCS_CTRL_CR0_READ_SHADOW, __read_cr0 ());
+   e |= vmwrite (VMCS_CTRL_CR0_READ_SHADOW, readcr0 ());
    cr4_t cr4;
    cr4_t cr4_mask;
    cr4_mask.ctl = 0;
    cr4_mask.VMXE = 1;
-   cr4.ctl = __read_cr4 ();
+   cr4.ctl = readcr4 ();
    cr4.VMXE = 0;
    e |= vmwrite (VMCS_CTRL_CR4_GUEST_HOST_MASK, cr4_mask.ctl);
    e |= vmwrite (VMCS_CTRL_CR4_READ_SHADOW, cr4.ctl);
@@ -831,9 +831,9 @@ static bool vmcs_setup_host (vcpu_ctx_t *vcpu_ctx)
    u64 e = 0;
 
    // Control registers
-   e |= vmwrite (VMCS_HOST_CR0, __read_cr0 ());
-   e |= vmwrite (VMCS_HOST_CR3, __read_cr3 ());
-   e |= vmwrite (VMCS_HOST_CR4, __read_cr4 ());
+   e |= vmwrite (VMCS_HOST_CR0, readcr0 ());
+   e |= vmwrite (VMCS_HOST_CR3, readcr3 ());
+   e |= vmwrite (VMCS_HOST_CR4, readcr4 ());
 
    // RSP and RIP
    e |= vmwrite (VMCS_HOST_RSP, 0);
@@ -880,9 +880,9 @@ static bool vmcs_setup_guest (vcpu_ctx_t *vcpu_ctx)
    u64 e = 0;
 
    // Control registers
-   e |= vmwrite (VMCS_GUEST_CR0, __read_cr0 ());
-   e |= vmwrite (VMCS_GUEST_CR3, __read_cr3 ());
-   e |= vmwrite (VMCS_GUEST_CR4, __read_cr4 ());
+   e |= vmwrite (VMCS_GUEST_CR0, readcr0 ());
+   e |= vmwrite (VMCS_GUEST_CR3, readcr3 ());
+   e |= vmwrite (VMCS_GUEST_CR4, readcr4 ());
 
    // Debug register DR7
    e |= vmwrite (VMCS_GUEST_DR7, __read_dr (7));
@@ -1006,24 +1006,15 @@ int vmcs_setup (vcpu_ctx_t *vcpu_ctx)
       return 0;
    }
 
-   if (!vmcs_setup_control (vcpu_ctx)
-    || !vmcs_setup_host (vcpu_ctx)
-    || !vmcs_setup_guest (vcpu_ctx))
-   {
-      return 0;
-   }
-  
-   if (!vmcs_setup_host (vcpu_ctx))
-   {
-      return 0;
-   }
+   vmcs_setup_control (vcpu_ctx);
+   vmcs_setup_host (vcpu_ctx);
+   vmcs_setup_guest (vcpu_ctx);
 
-   if (!vmcs_setup_guest (vcpu_ctx))
+   if (!vmcs_run_checks (vcpu_ctx))
    {
+      LOG_DBG ("invalid vmcs state");
       return 0;
    }
-
-   vmcs_run_checks (vcpu_ctx);
 
    if (VMX_ERR (vmlaunch ()))
    {

@@ -18,4 +18,6 @@ void vcpu_free (vcpu_ctx_t *vcpu_ctx);
 void vcpu_init (void *info);
 void vcpu_restore (void *info);
 
+int cpu_init_single (void);
+
 #endif // __LKM_CPU_H__

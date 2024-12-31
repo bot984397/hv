@@ -55,3 +55,13 @@ const char* vmx_get_error_message (void)
 {
    return vmx_error_internal (fvmread (VMCS_RO_VM_INSTRUCTION_ERROR));
 }
+
+int vmexit_handler (void)
+{
+   return 0;
+}
+
+void vmresume_error_handler (void)
+{
+
+}

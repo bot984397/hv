@@ -5,6 +5,78 @@
 #include "common.h"
 #include "vmcs.h"
 
+static inline __attribute__((always_inline)) u64 readcr0 (void)
+{
+   u64 r;
+   __asm__ __volatile__ 
+   (
+      "mov %%cr0, %[r]"
+      : [r] "=r" (r)
+      :
+      : "memory"
+   );
+   return r;
+}
+
+static inline __attribute__((always_inline)) void writecr0 (u64 v)
+{
+   __asm__ __volatile__
+   (
+      "mov %[v], %%cr0"
+      :
+      : [v] "r" (v)
+      : "memory"
+   );
+}
+
+static inline __attribute__((always_inline)) u64 readcr3 (void)
+{
+   u64 r;
+   __asm__ __volatile__
+   (
+      "mov %%cr3, %[r]"
+      : [r] "=r" (r)
+      :
+      : "memory"
+   );
+   return r;
+}
+
+static inline __attribute__((always_inline)) void writecr3 (u64 v)
+{
+   __asm__ __volatile__
+   (
+      "mov %[v], %%cr3"
+      :
+      : [v] "r" (v)
+      : "memory"
+   );
+}
+
+static inline __attribute__((always_inline)) u64 readcr4 (void)
+{
+   u64 r;
+   __asm__ __volatile__
+   (
+      "mov %%cr4, %[r]"
+      : [r] "=r" (r)
+      :
+      : "memory"
+   );
+   return r;
+}
+
+static inline __attribute__((always_inline)) void writecr4 (u64 v)
+{
+   __asm__ __volatile__
+   (
+      "mov %[v], %%cr4"
+      :
+      : [v] "r" (v)
+      : "memory"
+   );
+}
+
 static inline __attribute__((always_inline)) u8 vmxon (u64 p)
 {
    u8 r;

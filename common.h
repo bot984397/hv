@@ -34,9 +34,6 @@
 
 #include "msr.h"
 
-#define __read_cr0 read_cr0
-#define __write_cr0 write_cr0
-
 typedef struct _vmm_ctx_t vmm_ctx_t;
 typedef struct _vcpu_ctx_t vcpu_ctx_t;
 typedef struct _vm_region_t vm_region_t;
