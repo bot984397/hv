@@ -26,6 +26,8 @@
 
 #define BITS(v) v / 8
 
+#define _always_inline_ inline __attribute__((always_inline))
+
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/printk.h>

@@ -57,7 +57,7 @@ SYM_FUNC_START(cpu_init_start)
    addq $0x20, %rsp
    // execution continues here in vmx non-root mode after VMLAUNCH.
    // if VMLAUNCH fails to execute, execution continues here outside VMX
-   // operation with error code in 
+   // operation with error code in RFLAGS
 .guest_resume:
    // restore flags and gp regs
    pop_gp

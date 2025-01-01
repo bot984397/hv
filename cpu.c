@@ -15,18 +15,17 @@
 #include "intrin.h"
 #include "common.h"
 
-int max_logical_cpu (void)
+_always_inline_ int max_logical_cpu (void)
 {
    return num_online_cpus ();
 }
 
-int cur_logical_cpu (void)
+_always_inline_ int cur_logical_cpu (void)
 {
    return smp_processor_id ();
 }
 
-static inline __attribute__((always_inline))
-bool vcpu_supports_vmx (void)
+static _always_inline_ bool vcpu_supports_vmx (void)
 {
    return this_cpu_has (X86_FEATURE_VMX);
 }
