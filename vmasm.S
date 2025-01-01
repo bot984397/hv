@@ -48,7 +48,6 @@
 
 // per-cpu initialization routine
 SYM_FUNC_START(cpu_init_asm)
-   // push flags and gp regs
    pushfq
    push_gp
    // %rdi: cpu_ctx struct for this processor
@@ -65,41 +64,28 @@ SYM_FUNC_START(cpu_init_asm)
    // if VMLAUNCH fails to execute, execution continues here outside VMX
    // operation with error code in RFLAGS
 .cpu_init_post:
-   // restore flags and gp regs
    pop_gp
    popfq
-   // using RET to comply with retbleed mitigations
    RET
 SYM_FUNC_END(cpu_init_asm)
 EXPORT_SYMBOL(cpu_init_asm)
 
 // vm-exit handler entry point
 SYM_FUNC_START(vmexit_start)
-   // push flags and gp regs
-   pushfq
    push_gp
    // call vm-exit handler routine
    subq $0x20, %rsp
    call vmexit_handler
    addq $0x20, %rsp
-   // non-zero return value = error
    test %al, %al
+   pop_gp
    jnz .err
-   // restore flags and gp regs
-   pop_gp
-   popfq
-   // execute VMRESUME - only returns on error
    VMRESUME
-   RET
 .err:
-   // restore flags and gp regs
-   pop_gp
-   popfq
    // call vmresume error handler routine
    subq $0x20, %rsp
    call vmresume_error_handler
    addq $0x20, %rsp
-   // return = critical failure
 .crit_err:
    // todo: implement graceful hypervisor shutdown
    hlt
