@@ -123,8 +123,8 @@ typedef union
    {
       u64 low;
       s64 high;
-   } split;
-} ia32_gen_fixed_t;
+   };
+} fixed_msr;
 #define IA32_VMX_CR0_FIXED0_MSR 0x486
 #define IA32_VMX_CR0_FIXED1_MSR 0x487
 #define IA32_VMX_CR4_FIXED0_MSR 0x488

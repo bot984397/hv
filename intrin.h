@@ -111,6 +111,17 @@ static _always_inline_ void rdmsr1 (u32 m, u32 *vl, u32 *vh)
    *vh = h;
 }
 
+static _always_inline_ _cpuid cpuid1 (u32 l, u32 *a, u32 *b, u32 *c, u32 *d)
+{
+   __asm__ __volatile__
+   (
+      "cpuid"
+      : "=a" (*a), "=b" (*b), "=c" (*c), "=d" (*d)
+      : "a" (l)
+      :
+   );
+}
+
 static _always_inline_ u8 vmxon (u64 p)
 {
    u8 r;

@@ -25,202 +25,153 @@ _always_inline_ int cpu_high (void)
    return smp_processor_id ();
 }
 
-static _always_inline_ int cpu_probe_vmx (void)
+static _warn_unused_result_ int cpu_is_intel ()
 {
-   return this_cpu_has (X86_FEATURE_VMX);
+   u32 r[4] = {0};
+   cpuid1 (0, &r[0], &r[1], &r[2], &r[3]);
+
+   // some 2015 haswell processors have the faulty CPUID "GenuineIotel"
+   return (r[1] == 0x756E6547 && 
+          (r[2] == 0x6C65746E || r[2] == 0x6C65746F) &&
+           r[3] == 0x49656E69)
 }
 
-static __attribute__((warn_unused_result))
-bool vcpu_enable_vmx (void)
+static _warn_unused_result_ _always_inline_ int cpu_probe_vmx (void)
 {
-   cr0_t cr0 = {0};
-   cr4_t cr4 = {0};
-   ia32_feature_control_t feat_ctl = {0};
-   ia32_gen_fixed_t fixed = {0};
-
-   
-   feat_ctl.ctl = __rdmsr (IA32_FEATURE_CONTROL_MSR);
-   if (feat_ctl.locked == 1 && feat_ctl.vmx_outside_smx == 0)
+   if (!cpu_is_intel ())
    {
-      return false;
+      return 0;
    }
 
-   if (feat_ctl.locked == 0)
-   {
-      feat_ctl.locked = 1;
-      feat_ctl.vmx_outside_smx = 1;
-      __wrmsr (IA32_FEATURE_CONTROL_MSR, (feat_ctl.ctl >> 32), feat_ctl.ctl);
-   }
+   // if bit 0 is clear, UEFI or BIOS firmware fucked up
+   ia32_feature_control fctl = {0};
+   fctl.ctl = rdmsr (IA32_FEATURE_CONTROL_MSR);
+   return (fctl.locked == 0 || (fctl.locked == 1 && fctl.vos == 0));
+}
+
+static void cpu_enable_vmx (void)
+{
+   _cr0 cr0 = {0};
+   _cr4 cr4 = {0};
+   fixed_msr fixed = {0};
+
+   cr0.ctl = readcr0 ();
+   fixed.ctl = rdmsr (IA32_VMX_CR0_FIXED0_MSR);
+   cr0.ctl |= fixed.low;
+   fixed.ctl = rdmsr (IA32_VMX_CR0_FIXED1_MSR);
+   cr0.ctl &= fixed.low;
+   writecr0 (cr0.ctl);
 
    cr4.ctl = readcr4 ();
    cr4.VMXE = 1;
-   fixed.ctl = __rdmsr (IA32_VMX_CR4_FIXED0_MSR);
-   cr4.ctl |= fixed.split.low;
-   fixed.ctl = __rdmsr (IA32_VMX_CR4_FIXED1_MSR);
-   cr4.ctl &= fixed.split.low;
+   fixed.ctl = rdmsr (IA32_VMX_CR4_FIXED0_MSR);
+   cr4.ctl |= fixed.low;
+   fixed.ctl = rdmsr (IA32_VMX_CR4_FIXED1_MSR);
+   cr4.ctl &= fixed.low;
    writecr4 (cr4.ctl);
-
-   cr0.value = readcr0 ();
-   fixed.ctl = __rdmsr (IA32_VMX_CR0_FIXED0_MSR);
-   cr0.value |= fixed.split.low;
-   fixed.ctl = __rdmsr (IA32_VMX_CR0_FIXED1_MSR);
-   cr0.value &= fixed.split.low;
-   writecr0 (cr0.value);
-
-   return true;
 }
 
-static __attribute__((warn_unused_result)) 
-bool vcpu_alloc_vmx_region (vmx_reg **region, u64 *phys)
+static int cpu_new_vmx_region (vmx_reg **region, u64 *phys)
 {
-   ia32_vmx_basic_t vmx_basic = {0};
-   vmx_basic.ctl = __rdmsr (IA32_VMX_BASIC_MSR);
-#ifdef KMALLOC_ALIGNEDS
-   *region = kzalloc (vmx_basic.vmx_region_size, GFP_KERNEL);
-   if (*region == NULL)
+   *region = (vmx_reg *)page_alloc (0);
+   if (!*region)
    {
-      return false;
+      return 0;
    }
-#else
-   *region = (vmx_reg *)mem_alloc_pages (0);
-   if (*region == NULL)
-   {
-      return false;
-   }
-#endif // KMALLOC_ALIGNED
-   *phys = mem_virt_to_phys (*region);
+   *phys = addr_virt_to_phys (*region);
    
    (*region)->header.rev_ident = vmx_basic.vmcs_rev_ident;
    (*region)->header.reserved_0 = 0;
 
-   return true;
+   return 1;
+}
+
+static int cpu_new_bitmap (u8 **bitmap, u64 *phys)
+{
+   *bitmap = (u8 *)page_alloc (0);
+   if (!*bitmap)
+   {
+      return 0;
+   }
+   *phys = addr_virt_to_phys (*bitmap);
+   return 1;
 }
 
 _warn_unused_result cpu_ctx* cpu_new (void)
 {
-   cpu_ctx *_cpu_ctx;
+   u64 e = 0;
 
-   _cpu_ctx = kmalloc (sizeof (cpu_ctx), GFP_KERNEL);
-   if (_cpu_ctx == NULL)
+   cpu_ctx *_cpu_ctx = kmalloc (sizeof (cpu_ctx), GFP_KERNEL);
+   if (!_cpu_ctx) { return NULL; }
+
+   e |= cpu_new_vmx_region (&_cpu_ctx->vmxon_region, 
+                            &_cpu_ctx->vmxon_physical));
+   e |= cpu_new_vmx_region (&_cpu_ctx->vmcs_region,
+                            &_cpu_ctx->vmcs_physical));
+
+   e |= cpu_new_bitmap (&_cpu_ctx->bitmaps.io_bitmap_a,
+                        &_cpu_ctx->bitmaps.io_bitmap_a_phys));
+   e |= cpu_new_bitmap (&_cpu_ctx->bitmaps.io_bitmap_b,
+                        &_cpu_ctx->bitmaps.io_bitmap_b_phys));
+   e |= cpu_new_bitmap (&_cpu_ctx->bitmaps.msr_bitmaps,
+                        &_cpu_ctx->bitmaps.msr_bitmaps_phys));
+
+   if (e)
    {
-      goto FAILURE;
-   }
-
-   if (!vcpu_alloc_vmx_region (&_cpu_ctx->vmxon_region, 
-                               &_cpu_ctx->vmxon_physical))
-   {
-      goto FAILURE;
-   }
-
-   if (!vcpu_alloc_vmx_region (&_cpu_ctx->vmcs_region,
-                               &_cpu_ctx->vmcs_physical))
-   {
-      goto FAILURE;
-   }
-
-   _cpu_ctx->bitmaps.io_bitmap_a = (u8 *)mem_alloc_pages (0);
-   if (_cpu_ctx->bitmaps.io_bitmap_a == NULL)
-   {
-      goto FAILURE;
-   }
-   _cpu_ctx->bitmaps.io_bitmap_a_phys
-      = mem_virt_to_phys (_cpu_ctx->bitmaps.io_bitmap_a);
-
-   _cpu_ctx->bitmaps.io_bitmap_b = (u8 *)mem_alloc_pages (0);
-   if (_cpu_ctx->bitmaps.io_bitmap_b == NULL)
-   {
-      goto FAILURE;
-   }
-   _cpu_ctx->bitmaps.io_bitmap_b_phys
-      = mem_virt_to_phys (_cpu_ctx->bitmaps.io_bitmap_b);
-
-   _cpu_ctx->bitmaps.msr_bitmaps = (u8 *)mem_alloc_pages (0);
-   if (_cpu_ctx->bitmaps.msr_bitmaps == NULL)
-   {
-      goto FAILURE;
-   }
-   _cpu_ctx->bitmaps.msr_bitmaps_phys
-      = mem_virt_to_phys (_cpu_ctx->bitmaps.msr_bitmaps);
-
-   _cpu_ctx->cached.vmx_basic.ctl = __rdmsr (IA32_VMX_BASIC_MSR);
-
-   return _cpu_ctx;
-
-FAILURE:
-   vcpu_free (_cpu_ctx);
-   return NULL;
+      cpu_del (_cpu_ctx);
+      return NULL;
+   } return _cpu_ctx;
 }
 
-void vcpu_del (cpu_ctx *_cpu_ctx)
+void cpu_del (cpu_ctx *_cpu_ctx)
 {
-   if (!_cpu_ctx)
+   if (_cpu_ctx)
+   {
+      page_free_safe ((unsigned long)_cpu_ctx->vmxon_region, 0);
+      page_free_safe ((unsigned long)_cpu_ctx->vmcs_region, 0);
+      page_free_safe ((unsigned long)_cpu_ctx->bitmaps.io_bitmap_a, 0);
+      page_free_safe ((unsigned long)_cpu_ctx->bitmaps.io_bitmap_b, 0);
+      page_free_safe ((unsigned long)_cpu_ctx->bitmaps.msr_bitmaps, 0);
+
+      kfree (_cpu_ctx);
+   }
+}
+
+void cpu_init_pre (void)
+{
+   if (!cpu_probe_vmx ())
    {
       return;
    }
 
-#ifdef KMALLOC_ALIGNEDS
-   if (_cpu_ctx->vmxon_region) kfree (_cpu_ctx->vmxon_region);
-   if (_cpu_ctx->vmcs_region) kfree (_cpu_ctx->vmcs_region);
-#else
-   mem_free_pages_s ((unsigned long)_cpu_ctx->vmxon_region, 0);
-   mem_free_pages_s ((unsigned long)_cpu_ctx->vmcs_region, 0);
-#endif
-   mem_free_pages_s ((unsigned long)_cpu_ctx->bitmaps.io_bitmap_a, 0);
-   mem_free_pages_s ((unsigned long)_cpu_ctx->bitmaps.io_bitmap_b, 0);
-   mem_free_pages_s ((unsigned long)_cpu_ctx->bitmaps.msr_bitmaps, 0);
-
-   kfree (_cpu_ctx);
-}
-
-void vcpu_init (void *info)
-{
-   int this_cpu = cur_logical_cpu ();
+   cpu_enable_vmx ();
    
-   if (!vcpu_supports_vmx ())
-   {
-      VCPU_DBG ("vmx not supported");
-      return;
-   }
-
-   if (!vcpu_enable_vmx ())
-   {
-      VCPU_DBG ("failed to enable vmx operations");
-      return;
-   }
-
-   cpu_ctx *vcpu_ctx = g_vmm_ctx->vcpu_ctxs[this_cpu]; 
-   if (vmxon (vcpu_ctx->vmxon_physical) != 0)
-   {
-      VCPU_DBG ("[vmxon] failed");
-      vmxoff ();
-      return;
-   }
-   VCPU_DBG ("[vmxon] executed successfully");
-
-   if (!vmcs_setup (vcpu_ctx))
-   {
-      vmxoff ();
-      return;
-   }
-
-   atomic_inc (&g_vmm_ctx->vcpu_init);
-}
-
-void vcpu_restore (void *info)
-{
-   vmxoff ();
-   VCPU_DBG ("[vmxoff] executed");
-}
-
-int cpu_init_pre (void)
-{
    cpu_ctx *_cpu_ctx = g_vmm_ctx->cpu_ctx[cpu_this ()];
-   int rax = cpu_init_asm (_cpu_ctx);
+   if (vmxon (_cpu_ctx->vmxon_physical))
+   {
+      vmxoff ();
+      return;
+   }
 
-   return 0;
+   int rax = cpu_init_asm (_cpu_ctx);
+   // todo: return error in rax or rflags
+   if (rax)
+   {
+      _cpu_ctx->launched = 1;
+      atomic_inc (&g_vmm_ctx->vcpu_init);
+   }
 }
 
 int cpu_init_main (cpu_ctx *_cpu_ctx, u64 g_sp, u64 g_ip)
 {
    return 0;
+}
+
+void cpu_exit (_unused_ void *info)
+{
+   if (!vmxoff ())
+   {
+      cpu_ctx *_cpu_ctx = g_vmm_ctx->cpu_ctx[cpu_this ()];
+      _cpu_ctx->launched = 0;
+   }
 }

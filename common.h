@@ -27,7 +27,9 @@
 #define BITS(v) v / 8
 
 #define _always_inline_ inline __attribute__((always_inline))
-#define _warn_unused_result_ __attribute__((warn_unused_result))
+#define _warn_unused_ __attribute__((warn_unused_result))
+
+#define _unused_ __attribute__((__unused__))
 
 #include <linux/init.h>
 #include <linux/module.h>

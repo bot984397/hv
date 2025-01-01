@@ -4,59 +4,58 @@
 #include <linux/gfp.h>
 #include <asm/io.h>
 
-unsigned long mem_alloc_pages (unsigned int order)
+u64 page_alloc (u8 order)
 {
-   unsigned long page_addr = __get_free_pages (GFP_KERNEL, order);
-   if (!page_addr)
+   u64 addr = __get_free_pages (GFP_KERNEL, order);
+   if (!addr)
    {
       LOG_DBG ("failed to allocate pages - order: %d\n", order);
       return -ENOMEM;
    }
-   if (page_addr & (PAGE_SIZE - 1))
+   if (addr & (PAGE_SIZE - 1))
    {
       LOG_DBG ("allocated pages were not page aligned.\n");
-      mem_free_pages (page_addr, order);
+      page_free (addr, order);
       return -ENOMEM;
    }
    return page_addr;
 }
 
-void mem_free_pages_s (unsigned long page_addr, unsigned int order)
+void page_free_safe (u64 addr, u8 order)
 {
-   if (!page_addr)
+   if (!addr)
    {
       return;
    }
-   mem_free_pages (page_addr, order);
+   page_free (addr, order);
 }
 
-void mem_free_pages (unsigned long page_addr, unsigned int order)
+void page_free (u64 addr, u8 order)
 {
-   free_pages (page_addr, order);
+   free_pages (addr, order);
 }
 
-void mem_zero_pages (void *page, unsigned int order)
+void page_zero (void *addr, u8 order)
 {
-   if (!page)
+   if (!addr)
    {
       return;
    }
    for (int i = 0; i < (1 << order); i++)
    {
-      clear_page (page + (i * PAGE_SIZE));
+      clear_page (addr + (i * PAGE_SIZE));
    }
 }
 
-void mem_set_pages (void *page, u8 val, unsigned int order)
+void page_set (void *addr, u8 val, u8 order)
 {
-   if (!page)
+   if (addr)
    {
-      return;
+      memset (addr, val, PAGE_SIZE << order);
    }
-   memset (page, val, PAGE_SIZE << order);
 }
 
-u64 mem_virt_to_phys (void *virt_addr)
+u64 addr_virt_to_phys (void *addr)
 {
-   return (u64)virt_to_phys (virt_addr);
+   return (u64)virt_to_phys (addr);
 }

@@ -23,7 +23,7 @@ typedef union
       u64 CD : 1;
       u64 PG : 1;
    } flags;
-} cr0_t;
+} _cr0;
 
 typedef union
 {
@@ -32,7 +32,7 @@ typedef union
    {
 
    } flags;
-} cr3_t;
+} _cr3;
 
 typedef union
 {
@@ -68,7 +68,7 @@ typedef union
       u64 reserved_1 : 2;
       u64 LAM_SUP    : 1;
    };
-} cr4_t;
+} _cr4;
 
 typedef union
 {
@@ -98,6 +98,6 @@ typedef union
       u64 ID         : 1;
       u64 reserved_4 : 42;
    };
-} rflags_t;
+} _rflags;
 
 #endif // __LKM_CR_H__

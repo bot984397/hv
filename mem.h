@@ -3,14 +3,14 @@
 
 #include <linux/types.h>
 
-unsigned long mem_alloc_pages (unsigned int order);
+u64 page_alloc (u8 order);
 
-void mem_free_pages_s (unsigned long page_addr, unsigned int order);
-void mem_free_pages (unsigned long page_addr, unsigned int order);
+void page_free_safe (u64 addr, u8 order);
+void page_free (u64 addr, u8 order);
 
-void mem_zero_pages (void *page, unsigned int order);
-void mem_set_pages (void *page, u8 val, unsigned int order);
+void page_zero (void *addr, u8 order);
+void page_set (void *addr, u8 val, u8 order);
 
-u64 mem_virt_to_phys (void *virt_addr);
+u64 addr_virt_to_phys (void *addr);
 
 #endif // __LKM_MEM_H__
