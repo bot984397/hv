@@ -114,8 +114,8 @@ typedef union
    struct
    {
       u64 locked                    : 1;
-      u64 vmx_inside_smx            : 1;
-      u64 vmx_outside_smx           : 1;
+      u64 vis                       : 1;
+      u64 vos                       : 1;
       u64 reserved_0                : 5;
       u64 senter_local_enable       : 7;
       u64 senter_global_enable      : 1;
@@ -128,7 +128,7 @@ typedef union
    };
 } ia32_feature_control;
 size_assert (ia32_feature_control, BITS (64));
-#define IA32_FEATURE_CONTROL_MSR 0x0000003A
+#define IA32_FEATURE_CONTROL 0x0000003A
 
 typedef union
 {
@@ -149,7 +149,7 @@ typedef union
    };
 } ia32_vmx_basic;
 size_assert (ia32_vmx_basic, BITS (64));
-#define IA32_VMX_BASIC_MSR 0x00000480
+#define IA32_VMX_BASIC 0x00000480
 
 typedef union
 {
@@ -166,7 +166,7 @@ typedef union
    };
 } ia32_efer;
 size_assert (ia32_efer, BITS (64));
-#define IA32_EFER_MSR 0xC0000080
+#define IA32_EFER 0xC0000080
 
 typedef union
 {
@@ -191,7 +191,7 @@ typedef union
    };
 } ia32_debugctl;
 size_assert (ia32_debugctl, BITS (64));
-#define IA32_DEBUGCTL_MSR 0x000001D9
+#define IA32_DEBUGCTL 0x000001D9
 
 typedef union
 {
@@ -205,35 +205,25 @@ typedef union
    };
 } ia32_bndfcgs;
 size_assert (ia32_bndfcgs, BITS (64));
-#define IA32_BNDCFGS_MSR 0x00000D90
+#define IA32_BNDCFGS 0x00000D90
 
-#define IA32_SYSENTER_CS_MSR              0x00000174
-#define IA32_SYSENTER_ESP_MSR             0x00000175
-#define IA32_SYSENTER_EIP_MSR             0x00000176
-#define IA32_PERF_GLOBAL_CTRL_MSR         0x0000038F
-#define IA32_PAT_MSR                      0x00000277
-#define IA32_S_CET_MSR                    0x000006A2
-#define IA32_ISSPT_ADDR_MSR               0x000006A8
-#define IA32_PKRS_MSR                     0x000006E1
-#define IA32_RTIT_CTL_MSR                 0x00000570
-#define IA32_LBR_CTL_MSR                  0x000014CE
+#define IA32_SYSENTER_CS              0x00000174
+#define IA32_SYSENTER_ESP             0x00000175
+#define IA32_SYSENTER_EIP             0x00000176
+#define IA32_PERF_GLOBAL_CTRL         0x0000038F
+#define IA32_PAT                      0x00000277
+#define IA32_S_CET                    0x000006A2
+#define IA32_ISSPT_ADDR               0x000006A8
+#define IA32_PKRS                     0x000006E1
+#define IA32_RTIT_CTL                 0x00000570
+#define IA32_LBR_CTL                  0x000014CE
 
 // Capability MSRs
 
-typedef union
-{
-   u64 ctl;
-   struct
-   {
-      u64 low;
-      s64 high;
-   };
-} fixed_msr;
-
-#define IA32_VMX_CR0_FIXED0_MSR           0x00000486
-#define IA32_VMX_CR0_FIXED1_MSR           0x00000487
-#define IA32_VMX_CR4_FIXED0_MSR           0x00000488
-#define IA32_VMX_CR4_FIXED1_MSR           0x00000489
+#define IA32_VMX_CR0_FIXED0           0x00000486
+#define IA32_VMX_CR0_FIXED1           0x00000487
+#define IA32_VMX_CR4_FIXED0           0x00000488
+#define IA32_VMX_CR4_FIXED1           0x00000489
 
 typedef union
 {
@@ -245,16 +235,21 @@ typedef union
    };
 } cap_msr;
 
-#define IA32_VMX_PINBASED_CTLS_MSR        0x00000481
-#define IA32_VMX_TRUE_PINBASED_CTLS_MSR   0x0000048D
-#define IA32_VMX_PROCBASED_CTLS_MSR       0x00000482
-#define IA32_VMX_TRUE_PROCBASED_CTLS_MSR  0x0000048E
-#define IA32_VMX_PROCBASED_CTLS2_MSR      0x0000048B
-#define IA32_VMX_PROCBASED_CTLS3_MSR      0x00000492
-#define IA32_VMX_EXIT_CTLS_MSR            0x00000483
-#define IA32_VMX_TRUE_EXIT_CTLS_MSR       0x0000048F
-#define IA32_VMX_EXIT_CTLS2_MSR           0x00000493
-#define IA32_VMX_ENTRY_CTLS_MSR           0x00000484
-#define IA32_VMX_TRUE_ENTRY_CTLS_MSR      0x00000490
+#define IA32_VMX_PINBASED_CTLS        0x00000481
+#define IA32_VMX_TRUE_PINBASED_CTLS   0x0000048D
+#define IA32_VMX_PROCBASED_CTLS       0x00000482
+#define IA32_VMX_TRUE_PROCBASED_CTLS  0x0000048E
+#define IA32_VMX_PROCBASED_CTLS2      0x0000048B
+#define IA32_VMX_PROCBASED_CTLS3      0x00000492
+#define IA32_VMX_EXIT_CTLS            0x00000483
+#define IA32_VMX_TRUE_EXIT_CTLS       0x0000048F
+#define IA32_VMX_EXIT_CTLS2           0x00000493
+#define IA32_VMX_ENTRY_CTLS           0x00000484
+#define IA32_VMX_TRUE_ENTRY_CTLS      0x00000490
+
+// Segmentation
+
+#define IA32_FS_BASE                  0xC0000100
+#define IA32_GS_BASE                  0xC0000101
 
 #endif // __LKM_ARCH_H__

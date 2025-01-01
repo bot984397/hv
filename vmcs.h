@@ -8,7 +8,7 @@
 #define TSS_AVAILABLE 0x9
 #define TSS_BUSY 0xB
 
-__attribute__((warn_unused_result)) int vmcs_setup (cpu_ctx *vcpu_ctx);
+_warn_unused_result_ int vmcs_setup (cpu_ctx *_cpu_ctx);
 
 typedef union
 {
@@ -24,8 +24,8 @@ typedef union
       u32 process_posted_interrupts       : 1;
       u32 reserved_2                      : 24;
    };
-} __vmx_pinbased_controls;
-size_assert (__vmx_pinbased_controls, BITS(32));
+} vmx_pinbased_ctls;
+size_assert (vmx_pinbased_ctls, BITS (32));
 
 typedef union
 {
@@ -61,8 +61,8 @@ typedef union
       u32 pause_exiting                : 1;
       u32 activate_secondary_controls  : 1;
    };
-} __vmx_procbased_ctls;
-size_assert (__vmx_procbased_ctls, BITS(32));
+} vmx_procbased_ctls;
+size_assert (vmx_procbased_ctls, BITS (32));
 
 typedef union
 {
@@ -102,8 +102,8 @@ typedef union
       u32 vmm_bus_lock_detection          : 1;
       u32 instruction_timeout             : 1;
    };
-} __vmx_procbased_ctls2;
-size_assert (__vmx_procbased_ctls2, BITS(32));
+} vmx_procbased_ctls2;
+size_assert (vmx_procbased_ctls2, BITS (32));
 
 typedef union
 {
@@ -120,8 +120,8 @@ typedef union
       u64 virtualize_ia32_spec_ctrl    : 1;
       u64 reserved_1                   : 56;
    };
-} __vmx_procbased_ctls3;
-size_assert (__vmx_procbased_ctls3, BITS(64));
+} vmx_procbased_ctls3;
+size_assert (vmx_procbased_ctls3, BITS (64));
 
 typedef union
 {
@@ -152,8 +152,8 @@ typedef union
       u32 save_ia32_perf_global_ctl       : 1;
       u32 activate_secondary_controls     : 1;
    };
-} __vmx_exit_ctls;
-size_assert (__vmx_exit_ctls, BITS(32));
+} vmx_exit_ctls;
+size_assert (vmx_exit_ctls, BITS (32));
 
 typedef union
 {
@@ -164,8 +164,8 @@ typedef union
       u32 prematurely_busy_shadow_stack   : 1;
       u32 reserved_1                      : 28;
    };
-} __vmx_exit_ctls2;
-size_assert (__vmx_exit_ctls2, BITS(32));
+} vmx_exit_ctls2;
+size_assert (vmx_exit_ctls2, BITS (32));
 
 typedef union
 {
@@ -191,8 +191,8 @@ typedef union
       u32 load_pkrs                          : 1;
       u32 reserved_3                         : 9;
    };
-} __vmx_entry_ctls;
-size_assert (__vmx_entry_ctls, BITS(32));
+} vmx_entry_ctls;
+size_assert (vmx_entry_ctls, BITS (32));
 
 typedef union
 {
@@ -223,8 +223,8 @@ typedef union
       u32 control_protection_exception    : 1;
       u32 reserved_2                      : 10;
    };
-} __vmx_exception_bitmap;
-size_assert (__vmx_exception_bitmap, BITS(32));
+} vmx_exception_bitmap;
+size_assert (vmx_exception_bitmap, BITS (32));
 
 typedef union
 {
@@ -235,7 +235,8 @@ typedef union
       u16 table_indicator  : 1;
       u16 index            : 13;
    };
-} __segment_selector;
+} segment_selector;
+size_assert (segment_selector, BITS (16));
 
 typedef struct
 {
@@ -259,8 +260,8 @@ typedef struct
          u32 base_high              : 8;
       };
    };
-} __segment_descriptor_32;
-size_assert (__segment_descriptor_32, BITS(64));
+} segment_descriptor_32;
+size_assert (segment_descriptor_32, BITS (64));
 
 typedef struct
 {
@@ -295,8 +296,8 @@ typedef struct
          u32 reserved_5 : 19;
       };
    };
-} __segment_descriptor_64;
-size_assert (__segment_descriptor_64, BITS(128));
+} segment_descriptor_64;
+size_assert (segment_descriptor_64, BITS (128));
 
 typedef union
 {
@@ -315,15 +316,15 @@ typedef union
       u32 segment_unusable : 1;
       u32 reserved_1       : 15;
    };
-} __segment_access_rights;
-size_assert (__segment_access_rights, BITS(32));
+} segment_access_rights;
+size_assert (segment_access_rights, BITS (32));
 
-typedef struct pseudo_descriptor __pseudo_descriptor;
-struct __attribute__((packed)) pseudo_descriptor
+typedef struct _pseudo_descriptor pseudo_descriptor;
+struct _packed_ _pseudo_descriptor
 {
    u16 limit;
    u64 base;
 };
-size_assert (__pseudo_descriptor, BITS(80));
+size_assert (pseudo_descriptor, BITS (80));
 
 #endif // __LKM_VMCS_H__

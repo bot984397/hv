@@ -27,8 +27,8 @@
 #define BITS(v) v / 8
 
 #define _always_inline_ inline __attribute__((always_inline))
-#define _warn_unused_ __attribute__((warn_unused_result))
-
+#define _warn_unused_result_ __attribute__((warn_unused_result))
+#define _packed_ __attribute__((packed))
 #define _unused_ __attribute__((__unused__))
 
 #include <linux/init.h>
@@ -37,7 +37,7 @@
 #include <linux/types.h>
 #include <linux/atomic.h>
 
-#include "msr.h"
+#include "arch.h"
 
 typedef struct _vmm_ctx vmm_ctx;
 typedef struct _cpu_ctx cpu_ctx;
@@ -45,10 +45,10 @@ typedef struct _vmx_reg vmx_reg;
 
 struct _vmm_ctx
 {
-   int vcpu_max;
-   atomic_t vcpu_init;
+   int cpu_on;
+   atomic_t cpu_init;
    
-   cpu_ctx **vcpu_ctxs;
+   cpu_ctx **cpu_ctx;
 };
 
 struct _cpu_ctx
@@ -76,8 +76,10 @@ struct _cpu_ctx
 
    struct
    {
-      ia32_vmx_basic_t vmx_basic;
+      ia32_vmx_basic vmx_basic;
    } cached;
+
+   u8 launched;
 };
 
 struct _vmx_reg

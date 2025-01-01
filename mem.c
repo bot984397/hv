@@ -4,6 +4,11 @@
 #include <linux/gfp.h>
 #include <asm/io.h>
 
+void* _kmalloc (u64 size)
+{
+   return kmalloc (size, GFP_KERNEL);
+}
+
 u64 page_alloc (u8 order)
 {
    u64 addr = __get_free_pages (GFP_KERNEL, order);
@@ -18,7 +23,7 @@ u64 page_alloc (u8 order)
       page_free (addr, order);
       return -ENOMEM;
    }
-   return page_addr;
+   return addr;
 }
 
 void page_free_safe (u64 addr, u8 order)

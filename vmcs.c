@@ -3,34 +3,34 @@
 
 #include "vmcs.h"
 #include "cpu.h"
-#include "msr.h"
 #include "enc.h"
 #include "mem.h"
 #include "vmx.h"
-#include "crx.h"
 #include "intrin.h"
 #include "common.h"
 
-static bool vmcs_run_checks (cpu_ctx *vcpu_ctx);
+static bool vmcs_run_checks (cpu_ctx *_cpu_ctx);
 
 static void vmcs_adjust_controls (u32 *ctl, u64 cap)
 {
-   ia32_generic_cap_msr cap_msr = {0};
-   cap_msr.ctl = cap;
-
-   *ctl |= cap_msr.allowed_0;
-   *ctl &= cap_msr.allowed_1;
+   // low 32 bits = allowed 0 - high 32 bits = allowed 1
+   *ctl |= (u32)(cap);
+   *ctl &= (u32)(cap >> 32);
 }
 
-#define vmcs_adjust_controls_ex(cap, ctls, type, vcpu) \
-   cap.ctl = __rdmsr (vcpu->cached.vmx_basic.vmx_cap_support == 1 \
-         ? IA32_VMX_TRUE_##type##_CTLS_MSR \
-         : IA32_VMX_##type##_CTLS_MSR); \
-   vmcs_adjust_controls (ctls, cap.ctl);
+#define VMCS_ADJUST_CONTROLS1(cap, ctls, type) \
+   cap = rdmsr1 (type); \
+   vmcs_adjust_controls (ctls, cap);
 
-static __vmx_pinbased_controls vmcs_setup_pinbased_ctls (void)
+#define VMCS_ADJUST_CONTROLS2(cap, ctls, type, cpu) \
+   cap = rdmsr1 (cpu->cached.vmx_basic.vmx_cap_support == 1 \
+      ? IA32_VMX_TRUE_##type##_CTLS \
+      : IA32_VMX_##type##_CTLS); \
+   vmcs_adjust_controls (ctls, cap);
+
+static vmx_pinbased_ctls vmcs_setup_pinbased_ctls (void)
 {
-   __vmx_pinbased_controls control = {0};
+   vmx_pinbased_ctls control = {0};
 
    /*
     * true: external interrupts cause vm exits
@@ -64,9 +64,9 @@ static __vmx_pinbased_controls vmcs_setup_pinbased_ctls (void)
    return control;
 }
 
-static __vmx_procbased_ctls vmcs_setup_primary_procbased_ctls (void)
+static vmx_procbased_ctls vmcs_setup_procbased_ctls (void)
 {
-   __vmx_procbased_ctls control = {0};
+   vmx_procbased_ctls control = {0};
 
    /*
     * true: vm exit occurs at the beginning of any instruction
@@ -183,9 +183,9 @@ static __vmx_procbased_ctls vmcs_setup_primary_procbased_ctls (void)
    return control;
 }
 
-static __vmx_procbased_ctls2 vmcs_setup_secondary_procbased_ctls (void)
+static vmx_procbased_ctls2 vmcs_setup_procbased_ctls2 (void)
 {
-   __vmx_procbased_ctls2 control = {0};
+   vmx_procbased_ctls2 control = {0};
 
    /*
     * true: accesses to page with APIC-access address are treated specially
@@ -351,9 +351,9 @@ static __vmx_procbased_ctls2 vmcs_setup_secondary_procbased_ctls (void)
    return control;
 }
 
-static __vmx_exit_ctls vmcs_setup_primary_exit_ctls (void)
+static vmx_exit_ctls vmcs_setup_exit_ctls (void)
 {
-   __vmx_exit_ctls control = {0};
+   vmx_exit_ctls control = {0};
 
    /*
     * true: DR7 and IA32_DEBUGCTL MSR are saved on vm exit
@@ -451,9 +451,9 @@ static __vmx_exit_ctls vmcs_setup_primary_exit_ctls (void)
    return control;
 }
 
-static __vmx_entry_ctls vmcs_setup_entry_ctls (void)
+static vmx_entry_ctls vmcs_setup_entry_ctls (void)
 {
-   __vmx_entry_ctls control = {0};
+   vmx_entry_ctls control = {0};
 
    /*
     * true: DR7 and IA32_DEBUGCTL MSR are loaded on VM entry
@@ -529,9 +529,9 @@ static __vmx_entry_ctls vmcs_setup_entry_ctls (void)
    return control;
 }
 
-static __vmx_exception_bitmap vmcs_setup_exception_bitmap (void)
+static vmx_exception_bitmap vmcs_setup_exception_bitmap (void)
 {
-   __vmx_exception_bitmap control = {0};
+   vmx_exception_bitmap control = {0};
 
    control.divide_error = false;
 
@@ -578,21 +578,21 @@ static __vmx_exception_bitmap vmcs_setup_exception_bitmap (void)
    return control;
 }
 
-static void vmcs_set_msr_bitmap_single (u64 msr, bool w, cpu_ctx *vcpu_ctx)
+static void vmcs_set_msr_bitmap_single (u64 msr, bool w, cpu_ctx *_cpu_ctx)
 {
    switch (msr)
    {
       case 0x00000000 ... 0x00001FFF:
       {
          u64 byte = msr / 8;
-         vcpu_ctx->bitmaps.msr_bitmaps[w == true ? 2048 + byte : byte] 
+         _cpu_ctx->bitmaps.msr_bitmaps[w == true ? 2048 + byte : byte] 
             |= (1 << (msr % 8));
          break;
       }
       case 0xC0000000 ... 0xC0001FFF:
       {
          u64 byte = (msr - 0xC0000000) / 8;
-         vcpu_ctx->bitmaps.msr_bitmaps[w == true ? 3072 + byte : 1024 + byte]
+         _cpu_ctx->bitmaps.msr_bitmaps[w == true ? 3072 + byte : 1024 + byte]
             |= (1 << ((msr - 0xC0000000) % 8));
          break;
       }
@@ -601,21 +601,21 @@ static void vmcs_set_msr_bitmap_single (u64 msr, bool w, cpu_ctx *vcpu_ctx)
    }
 }
 
-static void vmcs_clr_msr_bitmap (cpu_ctx *vcpu_ctx)
+static void vmcs_clr_msr_bitmap (cpu_ctx *_cpu_ctx)
 {
-   mem_zero_pages (vcpu_ctx->bitmaps.msr_bitmaps, 0);
+   page_zero (_cpu_ctx->bitmaps.msr_bitmaps, 0);
 }
 
-static void vmcs_setup_msr_bitmaps (cpu_ctx *vcpu_ctx)
+static void vmcs_setup_msr_bitmaps (cpu_ctx *_cpu_ctx)
 {
-   vmcs_clr_msr_bitmap (vcpu_ctx);
-   vmcs_set_msr_bitmap_single (0xC0001FFF, false, vcpu_ctx);
+   vmcs_clr_msr_bitmap (_cpu_ctx);
+   vmcs_set_msr_bitmap_single (0xC0001FFF, false, _cpu_ctx);
 }
 
 static u32 get_access_rights (u16 seg)
 {
-   __segment_selector selector;
-   __segment_access_rights ar;
+   segment_selector selector;
+   segment_access_rights ar;
 
    selector.ctl = seg;
 
@@ -637,9 +637,9 @@ static u32 get_access_rights (u16 seg)
 static u64 get_segment_base (u64 gdt_base, u16 seg)
 {
    u64 seg_base;
-   __segment_selector selector;
-   __segment_descriptor_32 *descriptor;
-   __segment_descriptor_32 *descriptor_table;
+   segment_selector selector;
+   segment_descriptor_32 *descriptor;
+   segment_descriptor_32 *descriptor_table;
 
    selector.ctl = seg;
 
@@ -649,7 +649,7 @@ static u64 get_segment_base (u64 gdt_base, u16 seg)
       return seg_base;
    }
 
-   descriptor_table = (__segment_descriptor_32 *)gdt_base;
+   descriptor_table = (segment_descriptor_32 *)gdt_base;
    descriptor = &descriptor_table[selector.index];
 
    seg_base = (u64)((descriptor->base_high & 0xFF000000) |
@@ -660,53 +660,52 @@ static u64 get_segment_base (u64 gdt_base, u16 seg)
          ((descriptor->descriptor_type == TSS_AVAILABLE) ||
          (descriptor->descriptor_type == TSS_BUSY)))
    {
-      __segment_descriptor_64 *expanded_descriptor;
-      expanded_descriptor = (__segment_descriptor_64 *)descriptor;
+      segment_descriptor_64 *expanded_descriptor;
+      expanded_descriptor = (segment_descriptor_64 *)descriptor;
       seg_base |= ((u64)expanded_descriptor->base_upper << 32);
    }
 
    return seg_base;
 }
 
-static bool vmcs_setup_control (cpu_ctx *vcpu_ctx)
+static bool vmcs_setup_control (cpu_ctx *_cpu_ctx)
 {
-   ia32_generic_cap_msr cap = {0};
-   u64 e = 0;
+   u64 e = 0, cap = 0;
 
    // pinbased vm-execution controls
-   __vmx_pinbased_controls pinbased_ctl = vmcs_setup_pinbased_ctls ();
-   vmcs_adjust_controls_ex (cap, &pinbased_ctl.ctl, PINBASED, vcpu_ctx);
+   vmx_pinbased_ctls pinbased_ctl = vmcs_setup_pinbased_ctls ();
+   VMCS_ADJUST_CONTROLS2 (cap, &pinbased_ctl.ctl, PINBASED, _cpu_ctx);
    e |= vmwrite (VMCS_CTRL_PINBASED_CTLS, pinbased_ctl.ctl);
 
    // primary processor based vm-execution controls
-   __vmx_procbased_ctls procbased_ctl = vmcs_setup_primary_procbased_ctls ();
-   vmcs_adjust_controls_ex (cap, &procbased_ctl.ctl, PROCBASED, vcpu_ctx);
+   vmx_procbased_ctls procbased_ctl = vmcs_setup_procbased_ctls ();
+   VMCS_ADJUST_CONTROLS2 (cap, &procbased_ctl.ctl, PROCBASED, _cpu_ctx);
    e |= vmwrite (VMCS_CTRL_PROCBASED_CTLS, procbased_ctl.ctl);
 
    // secondary processor based vm-execution controls
-   __vmx_procbased_ctls2 procbased_ctl2 = vmcs_setup_secondary_procbased_ctls ();
-   vmcs_adjust_controls (&procbased_ctl2.ctl, IA32_VMX_PROCBASED_CTLS2_MSR);
+   vmx_procbased_ctls2 procbased_ctl2 = vmcs_setup_procbased_ctls2 ();
+   VMCS_ADJUST_CONTROLS1 (cap, &procbased_ctl2.ctl, IA32_VMX_PROCBASED_CTLS2);
    e |= vmwrite (VMCS_CTRL_PROCBASED_CTLS2, procbased_ctl2.ctl);
 
    // primary vm-exit controls
-   __vmx_exit_ctls exit_ctl = vmcs_setup_primary_exit_ctls ();
-   vmcs_adjust_controls_ex (cap, &exit_ctl.ctl, EXIT, vcpu_ctx);
+   vmx_exit_ctls exit_ctl = vmcs_setup_exit_ctls ();
+   VMCS_ADJUST_CONTROLS2 (cap, &exit_ctl.ctl, EXIT, _cpu_ctx);
    e |= vmwrite (VMCS_CTRL_PRIMARY_VMEXIT_CONTROLS, exit_ctl.ctl);
 
    // vm-entry controls
-   __vmx_entry_ctls entry_ctl = vmcs_setup_entry_ctls ();
-   vmcs_adjust_controls_ex (cap, &entry_ctl.ctl, ENTRY, vcpu_ctx);
+   vmx_entry_ctls entry_ctl = vmcs_setup_entry_ctls ();
+   VMCS_ADJUST_CONTROLS2 (cap, &entry_ctl.ctl, ENTRY, _cpu_ctx);
    e |= vmwrite (VMCS_CTRL_VMENTRY_CONTROLS, entry_ctl.ctl);
 
    // exception bitmap
-   __vmx_exception_bitmap exception_bitmap = vmcs_setup_exception_bitmap ();
+   vmx_exception_bitmap exception_bitmap = vmcs_setup_exception_bitmap ();
    e |= vmwrite (VMCS_CTRL_EXCEPTION_BITMAP, exception_bitmap.ctl);
 
    // I/O bitmap addresses
-   mem_zero_pages (vcpu_ctx->bitmaps.io_bitmap_a, 0);
-   e |= vmwrite (VMCS_CTRL_IO_BITMAP_A, vcpu_ctx->bitmaps.io_bitmap_a_phys);
-   mem_zero_pages (vcpu_ctx->bitmaps.io_bitmap_b, 0);
-   e |= vmwrite (VMCS_CTRL_IO_BITMAP_B, vcpu_ctx->bitmaps.io_bitmap_b_phys);
+   page_zero (_cpu_ctx->bitmaps.io_bitmap_a, 0);
+   e |= vmwrite (VMCS_CTRL_IO_BITMAP_A, _cpu_ctx->bitmaps.io_bitmap_a_phys);
+   page_zero (_cpu_ctx->bitmaps.io_bitmap_b, 0);
+   e |= vmwrite (VMCS_CTRL_IO_BITMAP_B, _cpu_ctx->bitmaps.io_bitmap_b_phys);
 
    // Time-Stamp Counter offset and multiplier
    e |= vmwrite (VMCS_CTRL_TSC_OFFSET, 0);
@@ -715,8 +714,8 @@ static bool vmcs_setup_control (cpu_ctx *vcpu_ctx)
    // CR0 and CR4 shadowing / guest-host masks
    e |= vmwrite (VMCS_CTRL_CR0_GUEST_HOST_MASK, 0);
    e |= vmwrite (VMCS_CTRL_CR0_READ_SHADOW, readcr0 ());
-   cr4_t cr4;
-   cr4_t cr4_mask;
+   _cr4 cr4;
+   _cr4 cr4_mask;
    cr4_mask.ctl = 0;
    cr4_mask.VMXE = 1;
    cr4.ctl = readcr4 ();
@@ -745,8 +744,8 @@ static bool vmcs_setup_control (cpu_ctx *vcpu_ctx)
    //e |= vmwrite (VMCS_CTRL_LAST_PID_POINTER_INDEX, 0);
 
    // MSR bitmap address
-   vmcs_setup_msr_bitmaps (vcpu_ctx);
-   e |= vmwrite (VMCS_CTRL_MSR_BITMAPS, vcpu_ctx->bitmaps.msr_bitmaps_phys);
+   vmcs_setup_msr_bitmaps (_cpu_ctx);
+   e |= vmwrite (VMCS_CTRL_MSR_BITMAPS, _cpu_ctx->bitmaps.msr_bitmaps_phys);
 
    // Executive-VMCS pointer
    e |= vmwrite (VMCS_CTRL_EXECUTIVE_VMCS_POINTER, 0);
@@ -826,7 +825,7 @@ static bool vmcs_setup_control (cpu_ctx *vcpu_ctx)
    return e == 0;
 }
 
-static bool vmcs_setup_host (cpu_ctx *vcpu_ctx)
+static bool vmcs_setup_host (cpu_ctx *_cpu_ctx)
 {
    u64 e = 0;
 
@@ -849,22 +848,22 @@ static bool vmcs_setup_host (cpu_ctx *vcpu_ctx)
    e |= vmwrite (VMCS_HOST_TR_SELECTOR, read_tr () & VMCS_HOST_SELECTOR_MASK);
 
    // Segment base addresses
-   __pseudo_descriptor gdt = sgdt ();
-   __pseudo_descriptor idt = sidt ();
+   pseudo_descriptor gdt = sgdt ();
+   pseudo_descriptor idt = sidt ();
 
-   e |= vmwrite (VMCS_HOST_FS_BASE, __rdmsr (IA32_FS_BASE_MSR));
-   e |= vmwrite (VMCS_HOST_GS_BASE, __rdmsr (IA32_GS_BASE_MSR));
+   e |= vmwrite (VMCS_HOST_FS_BASE, __rdmsr (IA32_FS_BASE));
+   e |= vmwrite (VMCS_HOST_GS_BASE, __rdmsr (IA32_GS_BASE));
    e |= vmwrite (VMCS_HOST_TR_BASE, get_segment_base (gdt.base, read_tr ()));
    e |= vmwrite (VMCS_HOST_GDTR_BASE, gdt.base);
    e |= vmwrite (VMCS_HOST_IDTR_BASE, idt.base);
 
    // MSRs
-   e |= vmwrite (VMCS_HOST_IA32_SYSENTER_CS, __rdmsr (IA32_SYSENTER_CS_MSR));
-   e |= vmwrite (VMCS_HOST_IA32_SYSENTER_ESP, __rdmsr (IA32_SYSENTER_ESP_MSR));
-   e |= vmwrite (VMCS_HOST_IA32_SYSENTER_EIP, __rdmsr (IA32_SYSENTER_EIP_MSR));
-   e |= vmwrite (VMCS_HOST_IA32_PERF_GLOBAL_CTRL, __rdmsr (IA32_PERF_GLOBAL_CTRL_MSR));
-   e |= vmwrite (VMCS_HOST_IA32_PAT, __rdmsr (IA32_PAT_MSR));
-   e |= vmwrite (VMCS_HOST_IA32_EFER, __rdmsr (IA32_EFER_MSR));
+   e |= vmwrite (VMCS_HOST_IA32_SYSENTER_CS, __rdmsr (IA32_SYSENTER_CS));
+   e |= vmwrite (VMCS_HOST_IA32_SYSENTER_ESP, __rdmsr (IA32_SYSENTER_ESP));
+   e |= vmwrite (VMCS_HOST_IA32_SYSENTER_EIP, __rdmsr (IA32_SYSENTER_EIP));
+   e |= vmwrite (VMCS_HOST_IA32_PERF_GLOBAL_CTRL, __rdmsr (IA32_PERF_GLOBAL_CTRL));
+   e |= vmwrite (VMCS_HOST_IA32_PAT, __rdmsr (IA32_PAT));
+   e |= vmwrite (VMCS_HOST_IA32_EFER, __rdmsr (IA32_EFER));
    //e |= vmwrite (VMCS_HOST_IA32_S_CET, __rdmsr (IA32_S_CET_MSR));
    //e |= vmwrite (VMCS_HOST_IA32_ISSPT_ADDR, __rdmsr (IA32_ISSPT_ADDR_MSR));
    //e |= vmwrite (VMCS_HOST_IA32_PKRS, __rdmsr (IA32_PKRS_MSR));
@@ -875,7 +874,7 @@ static bool vmcs_setup_host (cpu_ctx *vcpu_ctx)
    return e == 0;
 }
 
-static bool vmcs_setup_guest (cpu_ctx *vcpu_ctx)
+static bool vmcs_setup_guest (cpu_ctx *_cpu_ctx)
 {
    u64 e = 0;
 
@@ -902,16 +901,16 @@ static bool vmcs_setup_guest (cpu_ctx *vcpu_ctx)
    e |= vmwrite (VMCS_GUEST_TR_SELECTOR, read_tr ());
    e |= vmwrite (VMCS_GUEST_LDTR_SELECTOR, 0);
 
-   __pseudo_descriptor gdt = sgdt ();
-   __pseudo_descriptor idt = sidt ();
+   pseudo_descriptor gdt = sgdt ();
+   pseudo_descriptor idt = sidt ();
 
    // Segment base addresses - CS/SS/DS/ES fixed to 0 in long mode
    e |= vmwrite (VMCS_GUEST_CS_BASE, get_segment_base (gdt.base, read_cs ()));
    e |= vmwrite (VMCS_GUEST_SS_BASE, get_segment_base (gdt.base, read_ss ()));
    e |= vmwrite (VMCS_GUEST_DS_BASE, get_segment_base (gdt.base, read_ds ()));
    e |= vmwrite (VMCS_GUEST_ES_BASE, get_segment_base (gdt.base, read_es ()));
-   e |= vmwrite (VMCS_GUEST_FS_BASE, __rdmsr (IA32_FS_BASE_MSR));
-   e |= vmwrite (VMCS_GUEST_GS_BASE, __rdmsr (IA32_GS_BASE_MSR));
+   e |= vmwrite (VMCS_GUEST_FS_BASE, __rdmsr (IA32_FS_BASE));
+   e |= vmwrite (VMCS_GUEST_GS_BASE, __rdmsr (IA32_GS_BASE));
    e |= vmwrite (VMCS_GUEST_TR_BASE, get_segment_base (gdt.base, read_tr ()));
    e |= vmwrite (VMCS_GUEST_LDTR_BASE, get_segment_base (gdt.base, read_ldtr ()));
 
@@ -942,14 +941,14 @@ static bool vmcs_setup_guest (cpu_ctx *vcpu_ctx)
    e |= vmwrite (VMCS_GUEST_IDTR_BASE, idt.base);
 
    // MSRs
-   e |= vmwrite (VMCS_GUEST_IA32_DEBUGCTL, __rdmsr (IA32_DEBUGCTL_MSR));
-   e |= vmwrite (VMCS_GUEST_IA32_SYSENTER_CS, __rdmsr (IA32_SYSENTER_CS_MSR));
-   e |= vmwrite (VMCS_GUEST_IA32_SYSENTER_ESP, __rdmsr (IA32_SYSENTER_ESP_MSR));
-   e |= vmwrite (VMCS_GUEST_IA32_SYSENTER_EIP, __rdmsr (IA32_SYSENTER_EIP_MSR));
-   e |= vmwrite (VMCS_GUEST_IA32_PERF_GLOBAL_CTRL, __rdmsr (IA32_PERF_GLOBAL_CTRL_MSR));
-   e |= vmwrite (VMCS_GUEST_IA32_PAT, __rdmsr (IA32_PAT_MSR));
-   e |= vmwrite (VMCS_GUEST_IA32_EFER, __rdmsr (IA32_EFER_MSR));
-   e |= vmwrite (VMCS_GUEST_IA32_BNDCFGS, __rdmsr (IA32_BNDCFGS_MSR));
+   e |= vmwrite (VMCS_GUEST_IA32_DEBUGCTL, __rdmsr (IA32_DEBUGCTL));
+   e |= vmwrite (VMCS_GUEST_IA32_SYSENTER_CS, __rdmsr (IA32_SYSENTER_CS));
+   e |= vmwrite (VMCS_GUEST_IA32_SYSENTER_ESP, __rdmsr (IA32_SYSENTER_ESP));
+   e |= vmwrite (VMCS_GUEST_IA32_SYSENTER_EIP, __rdmsr (IA32_SYSENTER_EIP));
+   e |= vmwrite (VMCS_GUEST_IA32_PERF_GLOBAL_CTRL, __rdmsr (IA32_PERF_GLOBAL_CTRL));
+   e |= vmwrite (VMCS_GUEST_IA32_PAT, __rdmsr (IA32_PAT));
+   e |= vmwrite (VMCS_GUEST_IA32_EFER, __rdmsr (IA32_EFER));
+   e |= vmwrite (VMCS_GUEST_IA32_BNDCFGS, __rdmsr (IA32_BNDCFGS));
    //e |= vmwrite (VMCS_GUEST_IA32_RTIT_CTL, __rdmsr (IA32_RTIT_CTL_MSR));
    //e |= vmwrite (VMCS_GUEST_IA32_LBR_CTL, __rdmsr (IA32_LBR_CTL_MSR));
    //e |= vmwrite (VMCS_GUEST_IA32_S_CET, __rdmsr (IA32_S_CET_MSR));
@@ -993,24 +992,24 @@ static bool vmcs_setup_guest (cpu_ctx *vcpu_ctx)
 }
 
 __attribute__((warn_unused_result)) 
-int vmcs_setup (cpu_ctx *vcpu_ctx)
+int vmcs_setup (cpu_ctx *_cpu_ctx)
 {
-   if (vmclear (vcpu_ctx->vmcs_physical) != 0)
+   if (vmclear (_cpu_ctx->vmcs_physical) != 0)
    {
       LOG_DBG ("VMCLEAR: %s", vmx_get_error_message ());
       return 0;
    }
-   if (vmptrld (vcpu_ctx->vmcs_physical) != 0)
+   if (vmptrld (_cpu_ctx->vmcs_physical) != 0)
    {
       LOG_DBG ("VMPTRLD: %s", vmx_get_error_message ());
       return 0;
    }
 
-   vmcs_setup_control (vcpu_ctx);
-   vmcs_setup_host (vcpu_ctx);
-   vmcs_setup_guest (vcpu_ctx);
+   vmcs_setup_control (_cpu_ctx);
+   vmcs_setup_host (_cpu_ctx);
+   vmcs_setup_guest (_cpu_ctx);
 
-   if (!vmcs_run_checks (vcpu_ctx))
+   if (!vmcs_run_checks (_cpu_ctx))
    {
       LOG_DBG ("invalid vmcs state");
       return 0;
@@ -1025,28 +1024,28 @@ int vmcs_setup (cpu_ctx *vcpu_ctx)
    return 1;
 }
 
-static bool vmcs_check_control_32 (u32 ctl, ia32_generic_cap_msr cap)
+static bool vmcs_check_control_32 (u32 ctl, cap_msr cap)
 {
-   return !((ctl & cap.allowed_0) != cap.allowed_0 || (ctl & ~cap.allowed_1) != 0);
+   return !((ctl & cap._0) != cap._0 || (ctl & ~cap._1) != 0);
 }
 
-static bool vmcs_run_checks (cpu_ctx *vcpu_ctx)
+static bool vmcs_run_checks (cpu_ctx *_cpu_ctx)
 {
    // checks on vmx controls [28.2.1]
-   ia32_generic_cap_msr cap = {0};
+   cap_msr cap = {0};
 
-   __vmx_pinbased_controls pinbased = {0};
+   vmx_pinbased_ctls pinbased = {0};
    pinbased.ctl = fvmread (VMCS_CTRL_PINBASED_CTLS);
-   cap.ctl = __rdmsr (IA32_VMX_TRUE_PINBASED_CTLS_MSR);
+   cap.ctl = __rdmsr (IA32_VMX_TRUE_PINBASED_CTLS);
    if (!vmcs_check_control_32 (pinbased.ctl, cap))
    {
       VCPU_DBG ("pinbased controls ERR");
       return false;
    }
 
-   __vmx_procbased_ctls procbased = {0};
+   vmx_procbased_ctls procbased = {0};
    procbased.ctl = fvmread (VMCS_CTRL_PROCBASED_CTLS);
-   cap.ctl = __rdmsr (IA32_VMX_TRUE_PROCBASED_CTLS_MSR);
+   cap.ctl = __rdmsr (IA32_VMX_TRUE_PROCBASED_CTLS);
    if (!vmcs_check_control_32 (procbased.ctl, cap))
    {
       VCPU_DBG ("procbased controls ERR");
@@ -1055,9 +1054,9 @@ static bool vmcs_run_checks (cpu_ctx *vcpu_ctx)
 
    if (procbased.activate_secondary_controls == 1)
    {
-      __vmx_procbased_ctls2 procbased2 = {0};
+      vmx_procbased_ctls2 procbased2 = {0};
       procbased2.ctl = fvmread (VMCS_CTRL_PROCBASED_CTLS2);
-      cap.ctl = __rdmsr (IA32_VMX_PROCBASED_CTLS2_MSR);
+      cap.ctl = __rdmsr (IA32_VMX_PROCBASED_CTLS2);
       if (!vmcs_check_control_32 (procbased2.ctl, cap))
       {
          VCPU_DBG ("procbased controls 2 ERR");
@@ -1067,9 +1066,9 @@ static bool vmcs_run_checks (cpu_ctx *vcpu_ctx)
 
    if (procbased.activate_tertiary_controls == 1)
    {
-      __vmx_procbased_ctls3 procbased3 = {0};
+      vmx_procbased_ctls3 procbased3 = {0};
       procbased3.ctl = fvmread (VMCS_CTRL_PROCBASED_CTLS3);
-      cap.ctl = __rdmsr (IA32_VMX_PROCBASED_CTLS2_MSR);
+      cap.ctl = __rdmsr (IA32_VMX_PROCBASED_CTLS2);
       if (!vmcs_check_control_32 (procbased3.ctl, cap))
       {
          VCPU_DBG ("procbased controls 3 ERR");
@@ -1083,19 +1082,19 @@ static bool vmcs_run_checks (cpu_ctx *vcpu_ctx)
       return false;
    }
 
-   if (vcpu_ctx->bitmaps.io_bitmap_a_phys & 0xFFF)
+   if (_cpu_ctx->bitmaps.io_bitmap_a_phys & 0xFFF)
    {
       VCPU_DBG ("io bitmap a misaligned");
       return false;
    }
 
-   if (vcpu_ctx->bitmaps.io_bitmap_b_phys & 0xFFF)
+   if (_cpu_ctx->bitmaps.io_bitmap_b_phys & 0xFFF)
    {
       VCPU_DBG ("io bitmap b misaligned");
       return false;
    }
 
-   if (vcpu_ctx->bitmaps.msr_bitmaps_phys & 0xFFF)
+   if (_cpu_ctx->bitmaps.msr_bitmaps_phys & 0xFFF)
    {
       VCPU_DBG ("msr bitmaps misaligned");
    }

@@ -77,7 +77,7 @@ static _always_inline_ void writecr4 (u64 v)
    );
 }
 
-static _always_inline_ void wrmsr (u32 m, u64 v)
+static _always_inline_ void wrmsr1 (u32 m, u64 v)
 {
    u32 l = v & 0xFFFFFFFF;
    u32 h = v >> 32;
@@ -90,14 +90,7 @@ static _always_inline_ void wrmsr (u32 m, u64 v)
    );
 }
 
-static _always_inline u64 rdmsr (u32 m)
-{
-   u32 l, h;
-   rdmsr1 (m, &l, &h);
-   return ((u64)h << 32) | l;
-}
-
-static _always_inline_ void rdmsr1 (u32 m, u32 *vl, u32 *vh)
+static _always_inline_ void rdmsr2 (u32 m, u32 *vl, u32 *vh)
 {
    u32 l, h;
    __asm__ __volatile__
@@ -111,7 +104,14 @@ static _always_inline_ void rdmsr1 (u32 m, u32 *vl, u32 *vh)
    *vh = h;
 }
 
-static _always_inline_ _cpuid cpuid1 (u32 l, u32 *a, u32 *b, u32 *c, u32 *d)
+static _always_inline_ u64 rdmsr1 (u32 m)
+{
+   u32 l, h;
+   rdmsr2 (m, &l, &h);
+   return ((u64)h << 32) | l;
+}
+
+static _always_inline_ void cpuid1 (u32 l, u32 *a, u32 *b, u32 *c, u32 *d)
 {
    __asm__ __volatile__
    (
@@ -379,9 +379,9 @@ static _always_inline_ u32 lar (u32 s)
    return v;
 }
 
-static _always_inline_ __pseudo_descriptor sgdt (void)
+static _always_inline_ pseudo_descriptor sgdt (void)
 {
-   __pseudo_descriptor v;
+   pseudo_descriptor v;
    __asm__ __volatile__
    (
       "sgdt %[v]"
@@ -390,9 +390,9 @@ static _always_inline_ __pseudo_descriptor sgdt (void)
    return v;
 }
 
-static _always_inline_ __pseudo_descriptor sidt (void)
+static _always_inline_ pseudo_descriptor sidt (void)
 {
-   __pseudo_descriptor v;
+   pseudo_descriptor v;
    __asm__ __volatile__
    (
       "sidt %[v]"

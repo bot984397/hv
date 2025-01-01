@@ -4,7 +4,6 @@
 
 #include "vmm.h"
 #include "cpu.h"
-#include "msr.h"
 #include "vmcs.h"
 #include "common.h"
 #include "hotplug.h"
@@ -20,24 +19,22 @@ static int __init lkm_init (void)
       return -EPERM;
    }
 
-   if (vmm_alloc () == false)
+   if (vmm_new () == false)
    {
       cpu_hotplug_unregister ();
-      vmm_free ();
+      vmm_del ();
       return -ENOMEM;
    }
 
-   on_each_cpu (vcpu_init, (void *)g_vmm_ctx, true);
-   if (g_vmm_ctx->vcpu_max != atomic_read (&g_vmm_ctx->vcpu_init))
+   on_each_cpu (cpu_init_pre, NULL, true);
+   if (g_vmm_ctx->cpu_on != atomic_read (&g_vmm_ctx->cpu_init))
    {
-      LOG_DBG ("one or more processors failed to enter vmx operation");
       cpu_hotplug_unregister ();
-      vmm_free ();
+      vmm_del ();
       return -EPERM;
    }
 
    // hypervisor should be up and running now.
-   LOG_DBG ("hypervisor loaded");
    return 0;
 }
 
@@ -45,11 +42,9 @@ static void __exit lkm_exit (void)
 {
    LOG_DBG ("module unloaded");
 
-   on_each_cpu (vcpu_restore, NULL, true);
-
+   on_each_cpu (cpu_exit, NULL, true);
    cpu_hotplug_unregister ();
-   vmm_free ();
-   LOG_DBG ("hypervisor unloaded");
+   vmm_del ();
 }
 
 module_init (lkm_init);

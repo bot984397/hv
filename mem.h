@@ -3,6 +3,8 @@
 
 #include <linux/types.h>
 
+void* _kmalloc (u64 size);
+
 u64 page_alloc (u8 order);
 
 void page_free_safe (u64 addr, u8 order);

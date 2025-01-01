@@ -5,48 +5,38 @@
 #include "mem.h"
 #include "common.h"
 
-bool vmm_alloc (void)
+int vmm_new (void)
 {
-   g_vmm_ctx = kmalloc (sizeof (vmm_ctx), GFP_KERNEL);
-   if (g_vmm_ctx == NULL)
+   g_vmm_ctx = _kmalloc (sizeof (vmm_ctx));
+   if (!g_vmm_ctx) { return 0; }
+
+   g_vmm_ctx->cpu_on = cpu_high ();
+   atomic_set (&g_vmm_ctx->cpu_init, 0);
+
+   g_vmm_ctx->cpu_ctx = _kmalloc (sizeof (cpu_ctx *) * g_vmm_ctx->cpu_on);
+   if (!g_vmm_ctx->cpu_ctx) { return 0; }
+
+   for (u16 i = 0; i < g_vmm_ctx->cpu_on; i++)
    {
-      return false;
+      g_vmm_ctx->cpu_ctx[i] = cpu_new ();
+      if (!g_vmm_ctx->cpu_ctx[i]) { return 0; }
    }
 
-   g_vmm_ctx->vcpu_max = max_logical_cpu ();
-   atomic_set (&g_vmm_ctx->vcpu_init, 0);
-
-   g_vmm_ctx->vcpu_ctxs 
-      = kmalloc (sizeof (cpu_ctx *) * g_vmm_ctx->vcpu_max, GFP_KERNEL);
-   if (g_vmm_ctx->vcpu_ctxs == NULL)
-   {
-      return false;
-   }
-
-   for (int i = 0; i < g_vmm_ctx->vcpu_max; i++)
-   {
-      g_vmm_ctx->vcpu_ctxs[i] = vcpu_alloc ();
-      if (g_vmm_ctx->vcpu_ctxs[i] == NULL)
-      {
-         return false;
-      }
-   }
-
-   return true;
+   return 1;
 }
 
-void vmm_free (void)
+void vmm_del (void)
 {
    if (!g_vmm_ctx)
    {
       return;
    }
 
-   for (int i = 0; i < g_vmm_ctx->vcpu_max; i++)
+   for (u16 i = 0; i < g_vmm_ctx->cpu_on; i++)
    {
-      if (g_vmm_ctx->vcpu_ctxs[i])
+      if (g_vmm_ctx->cpu_ctx[i])
       {
-         vcpu_free (g_vmm_ctx->vcpu_ctxs[i]);
+         cpu_del (g_vmm_ctx->cpu_ctx[i]);
       }
    }
    kfree (g_vmm_ctx);

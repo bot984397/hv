@@ -6,8 +6,8 @@
 
 #include "cpu.h"
 
-bool vmm_alloc (void);
+int vmm_new (void);
 
-void vmm_free (void);
+void vmm_del (void);
 
 #endif // __LKM_VMM_H__
