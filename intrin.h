@@ -77,6 +77,40 @@ static _always_inline_ void writecr4 (u64 v)
    );
 }
 
+static _always_inline_ void wrmsr (u32 m, u64 v)
+{
+   u32 l = v & 0xFFFFFFFF;
+   u32 h = v >> 32;
+   __asm__ __volatile__
+   (
+      "wrmsr"
+      :
+      : "c" (m), "a" (l), "d" (h)
+      : "memory"
+   );
+}
+
+static _always_inline u64 rdmsr (u32 m)
+{
+   u32 l, h;
+   rdmsr1 (m, &l, &h);
+   return ((u64)h << 32) | l;
+}
+
+static _always_inline_ void rdmsr1 (u32 m, u32 *vl, u32 *vh)
+{
+   u32 l, h;
+   __asm__ __volatile__
+   (
+      "rdmsr"
+      : "=a" (l), "=d" (h)
+      : "c" (m)
+      : "memory"
+   );
+   *vl = l;
+   *vh = h;
+}
+
 static _always_inline_ u8 vmxon (u64 p)
 {
    u8 r;

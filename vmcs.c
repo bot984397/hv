@@ -11,7 +11,7 @@
 #include "intrin.h"
 #include "common.h"
 
-static bool vmcs_run_checks (vcpu_ctx_t *vcpu_ctx);
+static bool vmcs_run_checks (cpu_ctx *vcpu_ctx);
 
 static void vmcs_adjust_controls (u32 *ctl, u64 cap)
 {
@@ -578,7 +578,7 @@ static __vmx_exception_bitmap vmcs_setup_exception_bitmap (void)
    return control;
 }
 
-static void vmcs_set_msr_bitmap_single (u64 msr, bool w, vcpu_ctx_t *vcpu_ctx)
+static void vmcs_set_msr_bitmap_single (u64 msr, bool w, cpu_ctx *vcpu_ctx)
 {
    switch (msr)
    {
@@ -601,12 +601,12 @@ static void vmcs_set_msr_bitmap_single (u64 msr, bool w, vcpu_ctx_t *vcpu_ctx)
    }
 }
 
-static void vmcs_clr_msr_bitmap (vcpu_ctx_t *vcpu_ctx)
+static void vmcs_clr_msr_bitmap (cpu_ctx *vcpu_ctx)
 {
    mem_zero_pages (vcpu_ctx->bitmaps.msr_bitmaps, 0);
 }
 
-static void vmcs_setup_msr_bitmaps (vcpu_ctx_t *vcpu_ctx)
+static void vmcs_setup_msr_bitmaps (cpu_ctx *vcpu_ctx)
 {
    vmcs_clr_msr_bitmap (vcpu_ctx);
    vmcs_set_msr_bitmap_single (0xC0001FFF, false, vcpu_ctx);
@@ -668,7 +668,7 @@ static u64 get_segment_base (u64 gdt_base, u16 seg)
    return seg_base;
 }
 
-static bool vmcs_setup_control (vcpu_ctx_t *vcpu_ctx)
+static bool vmcs_setup_control (cpu_ctx *vcpu_ctx)
 {
    ia32_generic_cap_msr cap = {0};
    u64 e = 0;
@@ -826,7 +826,7 @@ static bool vmcs_setup_control (vcpu_ctx_t *vcpu_ctx)
    return e == 0;
 }
 
-static bool vmcs_setup_host (vcpu_ctx_t *vcpu_ctx)
+static bool vmcs_setup_host (cpu_ctx *vcpu_ctx)
 {
    u64 e = 0;
 
@@ -875,7 +875,7 @@ static bool vmcs_setup_host (vcpu_ctx_t *vcpu_ctx)
    return e == 0;
 }
 
-static bool vmcs_setup_guest (vcpu_ctx_t *vcpu_ctx)
+static bool vmcs_setup_guest (cpu_ctx *vcpu_ctx)
 {
    u64 e = 0;
 
@@ -993,7 +993,7 @@ static bool vmcs_setup_guest (vcpu_ctx_t *vcpu_ctx)
 }
 
 __attribute__((warn_unused_result)) 
-int vmcs_setup (vcpu_ctx_t *vcpu_ctx)
+int vmcs_setup (cpu_ctx *vcpu_ctx)
 {
    if (vmclear (vcpu_ctx->vmcs_physical) != 0)
    {
@@ -1030,7 +1030,7 @@ static bool vmcs_check_control_32 (u32 ctl, ia32_generic_cap_msr cap)
    return !((ctl & cap.allowed_0) != cap.allowed_0 || (ctl & ~cap.allowed_1) != 0);
 }
 
-static bool vmcs_run_checks (vcpu_ctx_t *vcpu_ctx)
+static bool vmcs_run_checks (cpu_ctx *vcpu_ctx)
 {
    // checks on vmx controls [28.2.1]
    ia32_generic_cap_msr cap = {0};

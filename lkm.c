@@ -9,7 +9,7 @@
 #include "common.h"
 #include "hotplug.h"
 
-vmm_ctx_t *g_vmm_ctx;
+vmm_ctx *g_vmm_ctx;
 
 static int __init lkm_init (void)
 {

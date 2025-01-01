@@ -1,6 +1,6 @@
 #include <linux/linkage.h>
 
-.extern cpu_init_single
+.extern cpu_init_main
 
 .extern vmexit_handler
 
@@ -47,25 +47,31 @@
 .text
 
 // per-cpu initialization routine
-SYM_FUNC_START(cpu_init_start)
+SYM_FUNC_START(cpu_init_asm)
    // push flags and gp regs
    pushfq
    push_gp
+   // %rdi: cpu_ctx struct for this processor
+   // %rsi: original stack pointer (GUEST_RSP)
+   // %rdx: guest resume address (GUEST_RIP)
+   movq $0, %rdi
+   movq $0, %rsi
+   movq $0, %rdx
    // call vmx setup routine
    subq $0x20, %rsp
-   call cpu_init_single
+   call cpu_init_main
    addq $0x20, %rsp
    // execution continues here in vmx non-root mode after VMLAUNCH.
    // if VMLAUNCH fails to execute, execution continues here outside VMX
    // operation with error code in RFLAGS
-.guest_resume:
+.cpu_init_post:
    // restore flags and gp regs
    pop_gp
    popfq
    // using RET to comply with retbleed mitigations
    RET
-SYM_FUNC_END(cpu_init_start)
-EXPORT_SYMBOL(cpu_init_start)
+SYM_FUNC_END(cpu_init_asm)
+EXPORT_SYMBOL(cpu_init_asm)
 
 // vm-exit handler entry point
 SYM_FUNC_START(vmexit_start)

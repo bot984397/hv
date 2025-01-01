@@ -8,7 +8,7 @@
 #define TSS_AVAILABLE 0x9
 #define TSS_BUSY 0xB
 
-__attribute__((warn_unused_result)) int vmcs_setup (vcpu_ctx_t *vcpu_ctx);
+__attribute__((warn_unused_result)) int vmcs_setup (cpu_ctx *vcpu_ctx);
 
 typedef union
 {

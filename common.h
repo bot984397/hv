@@ -27,6 +27,7 @@
 #define BITS(v) v / 8
 
 #define _always_inline_ inline __attribute__((always_inline))
+#define _warn_unused_result_ __attribute__((warn_unused_result))
 
 #include <linux/init.h>
 #include <linux/module.h>
@@ -36,28 +37,27 @@
 
 #include "msr.h"
 
-typedef struct _vmm_ctx_t vmm_ctx_t;
-typedef struct _vcpu_ctx_t vcpu_ctx_t;
-typedef struct _vm_region_t vm_region_t;
+typedef struct _vmm_ctx vmm_ctx;
+typedef struct _cpu_ctx cpu_ctx;
+typedef struct _vmx_reg vmx_reg;
 
-struct _vmm_ctx_t 
+struct _vmm_ctx
 {
    int vcpu_max;
    atomic_t vcpu_init;
-   vcpu_ctx_t **vcpu_ctxs;
-
-   vcpu_ctx_t *vcpu_ctx_ll;
+   
+   cpu_ctx **vcpu_ctxs;
 };
 
-struct _vcpu_ctx_t 
+struct _cpu_ctx
 {
-   vmm_ctx_t *vmm_ctx;
+   vmm_ctx *vmm_ctx;
    u32 cpu_num;
 
-   vm_region_t *vmxon_region;
+   vmx_reg *vmxon_region;
    u64 vmxon_physical;
 
-   vm_region_t *vmcs_region;
+   vmx_reg *vmcs_region;
    u64 vmcs_physical;
 
    struct
@@ -78,7 +78,7 @@ struct _vcpu_ctx_t
    } cached;
 };
 
-struct _vm_region_t
+struct _vmx_reg
 {
    union
    {
@@ -93,6 +93,6 @@ struct _vm_region_t
    u8 data[];
 } __attribute__((packed));
 
-extern vmm_ctx_t *g_vmm_ctx;
+extern vmm_ctx *g_vmm_ctx;
 
 #endif // __LKM_COMMON_H__

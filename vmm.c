@@ -7,7 +7,7 @@
 
 bool vmm_alloc (void)
 {
-   g_vmm_ctx = kmalloc (sizeof (vmm_ctx_t), GFP_KERNEL);
+   g_vmm_ctx = kmalloc (sizeof (vmm_ctx), GFP_KERNEL);
    if (g_vmm_ctx == NULL)
    {
       return false;
@@ -17,7 +17,7 @@ bool vmm_alloc (void)
    atomic_set (&g_vmm_ctx->vcpu_init, 0);
 
    g_vmm_ctx->vcpu_ctxs 
-      = kmalloc (sizeof (vcpu_ctx_t *) * g_vmm_ctx->vcpu_max, GFP_KERNEL);
+      = kmalloc (sizeof (cpu_ctx *) * g_vmm_ctx->vcpu_max, GFP_KERNEL);
    if (g_vmm_ctx->vcpu_ctxs == NULL)
    {
       return false;
