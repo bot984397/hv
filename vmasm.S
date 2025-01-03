@@ -51,21 +51,27 @@ SYM_FUNC_START(cpu_init_asm)
    pushfq
    push_gp
    // %rdi: cpu_ctx struct for this processor
-   // %rsi: original stack pointer (GUEST_RSP)
-   // %rdx: guest resume address (GUEST_RIP)
-   movq $0, %rdi
-   movq $0, %rsi
-   movq $0, %rdx
+   // %rsi: guest stack pointer (GUEST_RSP)
+   // %rdx: guest flags (GUEST_RFLAGS)
+   // %rcx: guest resume address (GUEST_RIP)
+   movq %rsp, %rsi
+   movq 0x80(%rsp), %rdx
+   movabs $.cpu_init_post, %rcx
    // call vmx setup routine
    subq $0x20, %rsp
    call cpu_init_main
    addq $0x20, %rsp
-   // execution continues here in vmx non-root mode after VMLAUNCH.
-   // if VMLAUNCH fails to execute, execution continues here outside VMX
-   // operation with error code in RFLAGS
+   cmp $-1, %rax
+   je .cpu_init_post
+   pop_gp
+   popfq
+   xor %rax, %rax
+   RET
+   // if VMLAUNCH succeeds, operation continues here
 .cpu_init_post:
    pop_gp
    popfq
+   mov $0x1, %rax
    RET
 SYM_FUNC_END(cpu_init_asm)
 EXPORT_SYMBOL(cpu_init_asm)
@@ -73,14 +79,16 @@ EXPORT_SYMBOL(cpu_init_asm)
 // vm-exit handler entry point
 SYM_FUNC_START(vmexit_start)
    push_gp
+   movq 0x80(%rsp), %rdi
    // call vm-exit handler routine
    subq $0x20, %rsp
    call vmexit_handler
    addq $0x20, %rsp
-   test %al, %al
-   pop_gp
+   test %rax, %rax
    jnz .err
+   pop_gp
    VMRESUME
+   jmp .err
 .err:
    // call vmresume error handler routine
    subq $0x20, %rsp

@@ -6,10 +6,11 @@
 #include "enc.h"
 #include "mem.h"
 #include "vmx.h"
+#include "exit.h"
 #include "intrin.h"
 #include "common.h"
 
-static bool vmcs_run_checks (cpu_ctx *_cpu_ctx);
+static bool vmcs_check (cpu_ctx *_cpu_ctx);
 
 static void vmcs_adjust_controls (u32 *ctl, u64 cap)
 {
@@ -195,7 +196,7 @@ static vmx_procbased_ctls2 vmcs_setup_procbased_ctls2 (void)
    /*
     * true: Extended Page Tables (EPT) are enabled
     */
-   control.enable_ept = true;
+   control.enable_ept = false;
 
    /*
     * true: LGDT, LIDT, LLDT, LTR, SGDT, SIDT, SLDT and STR cause VM exits
@@ -578,6 +579,7 @@ static vmx_exception_bitmap vmcs_setup_exception_bitmap (void)
    return control;
 }
 
+/*
 static void vmcs_set_msr_bitmap_single (u64 msr, bool w, cpu_ctx *_cpu_ctx)
 {
    switch (msr)
@@ -600,6 +602,7 @@ static void vmcs_set_msr_bitmap_single (u64 msr, bool w, cpu_ctx *_cpu_ctx)
          LOG_DBG ("MSR out of range");
    }
 }
+*/
 
 static void vmcs_clr_msr_bitmap (cpu_ctx *_cpu_ctx)
 {
@@ -609,7 +612,7 @@ static void vmcs_clr_msr_bitmap (cpu_ctx *_cpu_ctx)
 static void vmcs_setup_msr_bitmaps (cpu_ctx *_cpu_ctx)
 {
    vmcs_clr_msr_bitmap (_cpu_ctx);
-   vmcs_set_msr_bitmap_single (0xC0001FFF, false, _cpu_ctx);
+   //vmcs_set_msr_bitmap_single (0xC0001FFF, false, _cpu_ctx);
 }
 
 static u32 get_access_rights (u16 seg)
@@ -668,7 +671,7 @@ static u64 get_segment_base (u64 gdt_base, u16 seg)
    return seg_base;
 }
 
-static bool vmcs_setup_control (cpu_ctx *_cpu_ctx)
+static bool vmcs_init_control (cpu_ctx *_cpu_ctx)
 {
    u64 e = 0, cap = 0;
 
@@ -707,61 +710,68 @@ static bool vmcs_setup_control (cpu_ctx *_cpu_ctx)
    page_zero (_cpu_ctx->bitmaps.io_bitmap_b, 0);
    e |= vmwrite (VMCS_CTRL_IO_BITMAP_B, _cpu_ctx->bitmaps.io_bitmap_b_phys);
 
+   // Page fault error code mask and match
+   e |= vmwrite (VMCS_CTRL_PAGE_FAULT_ERROR_CODE_MASK, 0);
+   e |= vmwrite (VMCS_CTRL_PAGE_FAULT_ERROR_CODE_MATCH, 0);
+
    // Time-Stamp Counter offset and multiplier
    e |= vmwrite (VMCS_CTRL_TSC_OFFSET, 0);
-   //e |= vmwrite (VMCS_CTRL_TSC_MULTIPLIER, 0);
+   e |= vmwrite (VMCS_CTRL_TSC_MULTIPLIER, 0);
 
    // CR0 and CR4 shadowing / guest-host masks
-   e |= vmwrite (VMCS_CTRL_CR0_GUEST_HOST_MASK, 0);
    e |= vmwrite (VMCS_CTRL_CR0_READ_SHADOW, readcr0 ());
-   _cr4 cr4;
-   _cr4 cr4_mask;
-   cr4_mask.ctl = 0;
-   cr4_mask.VMXE = 1;
-   cr4.ctl = readcr4 ();
-   cr4.VMXE = 0;
-   e |= vmwrite (VMCS_CTRL_CR4_GUEST_HOST_MASK, cr4_mask.ctl);
-   e |= vmwrite (VMCS_CTRL_CR4_READ_SHADOW, cr4.ctl);
+   e |= vmwrite (VMCS_CTRL_CR4_READ_SHADOW, readcr4 ());
+   e |= vmwrite (VMCS_CTRL_CR0_GUEST_HOST_MASK, 0);
+   e |= vmwrite (VMCS_CTRL_CR4_GUEST_HOST_MASK, 0);
 
    // CR3 target count and values
    e |= vmwrite (VMCS_CTRL_CR3_TARGET_COUNT, 0);
+   /*
    e |= vmwrite (VMCS_CTRL_CR3_TARGET_VALUE_0, 0);
    e |= vmwrite (VMCS_CTRL_CR3_TARGET_VALUE_1, 0);
    e |= vmwrite (VMCS_CTRL_CR3_TARGET_VALUE_2, 0);
    e |= vmwrite (VMCS_CTRL_CR3_TARGET_VALUE_3, 0);
+   */
 
    // APIC virtualization controls
+   /*
    e |= vmwrite (VMCS_CTRL_APIC_ACCESS_ADDRESS, 0);
    e |= vmwrite (VMCS_CTRL_VIRTUAL_APIC_ADDRESS, 0);
    e |= vmwrite (VMCS_CTRL_TPR_THRESHOLD, 0);
-   //e |= vmwrite (VMCS_CTRL_EOI_EXIT_BITMAP_0, 0);
-   //e |= vmwrite (VMCS_CTRL_EOI_EXIT_BITMAP_1, 0);
-   //e |= vmwrite (VMCS_CTRL_EOI_EXIT_BITMAP_2, 0);
-   //e |= vmwrite (VMCS_CTRL_EOI_EXIT_BITMAP_3, 0);
-   //e |= vmwrite (VMCS_CTRL_POSTED_INTERRUPT_NOTIFICATION_VECTOR, 0);
-   //e |= vmwrite (VMCS_CTRL_POSTED_INTERRUPT_DESCRIPTOR_ADDRESS, 0);
-   //e |= vmwrite (VMCS_CTRL_PID_POINTER_TABLE_ADDRESS, 0);
-   //e |= vmwrite (VMCS_CTRL_LAST_PID_POINTER_INDEX, 0);
+   e |= vmwrite (VMCS_CTRL_EOI_EXIT_BITMAP_0, 0);
+   e |= vmwrite (VMCS_CTRL_EOI_EXIT_BITMAP_1, 0);
+   e |= vmwrite (VMCS_CTRL_EOI_EXIT_BITMAP_2, 0);
+   e |= vmwrite (VMCS_CTRL_EOI_EXIT_BITMAP_3, 0);
+   e |= vmwrite (VMCS_CTRL_POSTED_INTERRUPT_NOTIFICATION_VECTOR, 0);
+   e |= vmwrite (VMCS_CTRL_POSTED_INTERRUPT_DESCRIPTOR_ADDRESS, 0);
+   e |= vmwrite (VMCS_CTRL_PID_POINTER_TABLE_ADDRESS, 0);
+   e |= vmwrite (VMCS_CTRL_LAST_PID_POINTER_INDEX, 0);
+   */
 
    // MSR bitmap address
    vmcs_setup_msr_bitmaps (_cpu_ctx);
    e |= vmwrite (VMCS_CTRL_MSR_BITMAPS, _cpu_ctx->bitmaps.msr_bitmaps_phys);
 
+   /*
    // Executive-VMCS pointer
    e |= vmwrite (VMCS_CTRL_EXECUTIVE_VMCS_POINTER, 0);
 
    // Extended-Page-Table Pointer (EPTP)
    e |= vmwrite (VMCS_CTRL_EPT_POINTER, 0);
+   */
 
    // Virtual-Processor Identifier (VPID)
    e |= vmwrite (VMCS_CTRL_VIRTUAL_PROCESSOR_IDENTIFIER, 1);
 
+   /*
    // Controls for PAUSE-Loop exiting
    e |= vmwrite (VMCS_CTRL_PLE_GAP, 0);
    e |= vmwrite (VMCS_CTRL_PLE_WINDOW, 0);
+   */
 
+   /*
    // VM-Function Controls
-   // TODO: implement vmcs_setup_vmfunc_ctls
+   // todo: implement vmcs_setup_vmfunc_ctls
    e |= vmwrite (VMCS_CTRL_VM_FUNCTION_CONTROLS, 0);
    e |= vmwrite (VMCS_CTRL_EPTP_LIST_ADDRESS, 0);
 
@@ -773,51 +783,62 @@ static bool vmcs_setup_control (cpu_ctx *_cpu_ctx)
    e |= vmwrite (VMCS_CTRL_ENCLS_EXITING_BITMAP, 0);
 
    // ENCLV-Exiting Bitmap
-   //e |= vmwrite (VMCS_CTRL_ENCLV_EXITING_BITMAP, 0);
+   e |= vmwrite (VMCS_CTRL_ENCLV_EXITING_BITMAP, 0);
 
    // PCONFIG-Exiting Bitmap
-   //e |= vmwrite (VMCS_CTRL_PCONFIG_EXITING_BITMAP, 0);
+   e |= vmwrite (VMCS_CTRL_PCONFIG_EXITING_BITMAP, 0);
 
    // Control Field for Page-Modification logging
    e |= vmwrite (VMCS_CTRL_PML_ADDRESS, 0);
+   */
 
+   /*
    // Controls for Virtualization Exceptions
    e |= vmwrite (VMCS_CTRL_VIRT_EXCEPTION_INFORMATION_ADDRESS, 0);
    e |= vmwrite (VMCS_CTRL_EPTP_INDEX, 0);
 
    // XSS-Exiting Bitmap
    e |= vmwrite (VMCS_CTRL_XSS_EXITING_BITMAP, 0);
+   */
 
+   /*
    // Sub-Page-Permission-Table Pointer (SPPTP)
-   //e |= vmwrite (VMCS_CTRL_SUB_PAGE_PERMISSION_TABLE_POINTER, 0);
+   e |= vmwrite (VMCS_CTRL_SUB_PAGE_PERMISSION_TABLE_POINTER, 0);
 
    // HLAT related fields
-   //e |= vmwrite (VMCS_CTRL_HLATP, 0);
+   e |= vmwrite (VMCS_CTRL_HLATP, 0);
 
    // PASID translation related fields
-   //e |= vmwrite (VMCS_CTRL_LOW_PASID_DIRECTORY_ADDRESS, 0);
-   //e |= vmwrite (VMCS_CTRL_HIGH_PASID_DIRECTORY_ADDRESS, 0);
+   e |= vmwrite (VMCS_CTRL_LOW_PASID_DIRECTORY_ADDRESS, 0);
+   e |= vmwrite (VMCS_CTRL_HIGH_PASID_DIRECTORY_ADDRESS, 0);
 
    // Instruction-Timeout Control
-   //e |= vmwrite (VMCS_CTRL_INSTRUCTION_TIMEOUT_CONTROL, 0);
+   e |= vmwrite (VMCS_CTRL_INSTRUCTION_TIMEOUT_CONTROL, 0);
 
    // IA32_SPEC_CTRL MSR virtualization controls
-   //e |= vmwrite (VMCS_CTRL_IA32_SPEC_CTRL_MASK, 0);
-   //e |= vmwrite (VMCS_CTRL_IA32_SPEC_CTRL_SHADOW, 0);
+   e |= vmwrite (VMCS_CTRL_IA32_SPEC_CTRL_MASK, 0);
+   e |= vmwrite (VMCS_CTRL_IA32_SPEC_CTRL_SHADOW, 0);
+   */
 
    // VM-Exit controls
 
    // VM-Exit controls for MSRs
    e |= vmwrite (VMCS_CTRL_VMEXIT_MSR_STORE_COUNT, 0);
+   /*
    e |= vmwrite (VMCS_CTRL_VMEXIT_MSR_STORE_ADDRESS, 0);
+   */
    e |= vmwrite (VMCS_CTRL_VMEXIT_MSR_LOAD_COUNT, 0);
+   /*
    e |= vmwrite (VMCS_CTRL_VMEXIT_MSR_LOAD_ADDRESS, 0);
+   */
 
    // VM-Entry controls
 
    // VM-Entry controls for MSRs
    e |= vmwrite (VMCS_CTRL_VMENTRY_MSR_LOAD_COUNT, 0);
+   /*
    e |= vmwrite (VMCS_CTRL_VMENTRY_MSR_LOAD_ADDRESS, 0);
+   */
 
    // VM-Instruction error information field
    e |= vmwrite (VMCS_RO_VM_INSTRUCTION_ERROR, 0);
@@ -825,7 +846,7 @@ static bool vmcs_setup_control (cpu_ctx *_cpu_ctx)
    return e == 0;
 }
 
-static bool vmcs_setup_host (cpu_ctx *_cpu_ctx)
+static bool vmcs_init_host (cpu_ctx *_cpu_ctx)
 {
    u64 e = 0;
 
@@ -835,8 +856,8 @@ static bool vmcs_setup_host (cpu_ctx *_cpu_ctx)
    e |= vmwrite (VMCS_HOST_CR4, readcr4 ());
 
    // RSP and RIP
-   e |= vmwrite (VMCS_HOST_RSP, 0);
-   e |= vmwrite (VMCS_HOST_RIP, 0);
+   e |= vmwrite (VMCS_HOST_RSP, (u64)&_cpu_ctx->_vmm_stk->_cpu_ctx);
+   e |= vmwrite (VMCS_HOST_RIP, (u64)&vmexit_start);
 
    // Segment selectors
    e |= vmwrite (VMCS_HOST_CS_SELECTOR, read_cs () & VMCS_HOST_SELECTOR_MASK);
@@ -864,17 +885,19 @@ static bool vmcs_setup_host (cpu_ctx *_cpu_ctx)
    e |= vmwrite (VMCS_HOST_IA32_PERF_GLOBAL_CTRL, __rdmsr (IA32_PERF_GLOBAL_CTRL));
    e |= vmwrite (VMCS_HOST_IA32_PAT, __rdmsr (IA32_PAT));
    e |= vmwrite (VMCS_HOST_IA32_EFER, __rdmsr (IA32_EFER));
-   //e |= vmwrite (VMCS_HOST_IA32_S_CET, __rdmsr (IA32_S_CET_MSR));
-   //e |= vmwrite (VMCS_HOST_IA32_ISSPT_ADDR, __rdmsr (IA32_ISSPT_ADDR_MSR));
-   //e |= vmwrite (VMCS_HOST_IA32_PKRS, __rdmsr (IA32_PKRS_MSR));
+   /*
+   e |= vmwrite (VMCS_HOST_IA32_S_CET, __rdmsr (IA32_S_CET_MSR));
+   e |= vmwrite (VMCS_HOST_IA32_ISSPT_ADDR, __rdmsr (IA32_ISSPT_ADDR_MSR));
+   e |= vmwrite (VMCS_HOST_IA32_PKRS, __rdmsr (IA32_PKRS_MSR));
 
    // Shadow-Stack Pointer (SSP) register
-   //e |= vmwrite (VMCS_HOST_SSP, 0);
+   e |= vmwrite (VMCS_HOST_SSP, 0);
+   */
 
    return e == 0;
 }
 
-static bool vmcs_setup_guest (cpu_ctx *_cpu_ctx)
+static bool vmcs_init_guest (cpu_ctx *_cpu_ctx, guest_init guest)
 {
    u64 e = 0;
 
@@ -887,9 +910,9 @@ static bool vmcs_setup_guest (cpu_ctx *_cpu_ctx)
    e |= vmwrite (VMCS_GUEST_DR7, __read_dr (7));
 
    // RSP, RIP and RFLAGS
-   e |= vmwrite (VMCS_GUEST_RSP, 0);
-   e |= vmwrite (VMCS_GUEST_RIP, 0);
-   e |= vmwrite (VMCS_GUEST_RFLAGS, read_rflags ());
+   e |= vmwrite (VMCS_GUEST_RSP, guest.sp);
+   e |= vmwrite (VMCS_GUEST_RIP, guest.ip);
+   e |= vmwrite (VMCS_GUEST_RFLAGS, guest.rf);
 
    // Segment selectors
    e |= vmwrite (VMCS_GUEST_CS_SELECTOR, read_cs ());
@@ -949,17 +972,21 @@ static bool vmcs_setup_guest (cpu_ctx *_cpu_ctx)
    e |= vmwrite (VMCS_GUEST_IA32_PAT, __rdmsr (IA32_PAT));
    e |= vmwrite (VMCS_GUEST_IA32_EFER, __rdmsr (IA32_EFER));
    e |= vmwrite (VMCS_GUEST_IA32_BNDCFGS, __rdmsr (IA32_BNDCFGS));
-   //e |= vmwrite (VMCS_GUEST_IA32_RTIT_CTL, __rdmsr (IA32_RTIT_CTL_MSR));
-   //e |= vmwrite (VMCS_GUEST_IA32_LBR_CTL, __rdmsr (IA32_LBR_CTL_MSR));
-   //e |= vmwrite (VMCS_GUEST_IA32_S_CET, __rdmsr (IA32_S_CET_MSR));
-   //e |= vmwrite (VMCS_GUEST_IA32_ISSPT_ADDR, __rdmsr (IA32_ISSPT_ADDR_MSR));
-   //e |= vmwrite (VMCS_GUEST_IA32_PKRS, __rdmsr (IA32_PKRS_MSR));
+   /*
+   e |= vmwrite (VMCS_GUEST_IA32_RTIT_CTL, __rdmsr (IA32_RTIT_CTL_MSR));
+   e |= vmwrite (VMCS_GUEST_IA32_LBR_CTL, __rdmsr (IA32_LBR_CTL_MSR));
+   e |= vmwrite (VMCS_GUEST_IA32_S_CET, __rdmsr (IA32_S_CET_MSR));
+   e |= vmwrite (VMCS_GUEST_IA32_ISSPT_ADDR, __rdmsr (IA32_ISSPT_ADDR_MSR));
+   e |= vmwrite (VMCS_GUEST_IA32_PKRS, __rdmsr (IA32_PKRS_MSR));
+   */
 
    // Shadow-Stack Pointer (SSP) register
    //e |= vmwrite (VMCS_GUEST_SSP, 0);
 
    // SMBASE register
+   /*
    e |= vmwrite (VMCS_GUEST_SMBASE, 0);
+   */
 
    // Activity state
    e |= vmwrite (VMCS_GUEST_ACTIVITY_STATE, 0);
@@ -971,48 +998,66 @@ static bool vmcs_setup_guest (cpu_ctx *_cpu_ctx)
    e |= vmwrite (VMCS_GUEST_PENDING_DEBUG_EXCEPTIONS, 0);
 
    // VMCS link pointer
-   e |= vmwrite (VMCS_GUEST_VMCS_LINK_POINTER, U64_MAX);
+   e |= vmwrite (VMCS_GUEST_VMCS_LINK_POINTER, ~0ULL);
 
    // VMX-preemption timer value
    e |= vmwrite (VMCS_GUEST_VMX_PREEMPTION_TIMER_VALUE, 0);
 
    // Page-Directory-Pointer-Table entries (PDPTEs)
+   /*
    e |= vmwrite (VMCS_GUEST_PDPTE0, 0);
    e |= vmwrite (VMCS_GUEST_PDPTE1, 0);
    e |= vmwrite (VMCS_GUEST_PDPTE2, 0);
    e |= vmwrite (VMCS_GUEST_PDPTE3, 0);
+   */
 
    // Guest interrupt status
-   //e |= vmwrite (VMCS_GUEST_INTERRUPT_STATUS, 0);
+   /*
+   e |= vmwrite (VMCS_GUEST_INTERRUPT_STATUS, 0);
+   */
 
    // PML index
+   /*
    e |= vmwrite (VMCS_GUEST_PML_INDEX, 0);
+   */
 
    return e == 0;
 }
 
-__attribute__((warn_unused_result)) 
-int vmcs_setup (cpu_ctx *_cpu_ctx)
+_warn_unused_result_ int vmcs_init_all (cpu_ctx *_cpu_ctx, guest_init guest)
 {
+   //u64 e;
+
    if (vmclear (_cpu_ctx->vmcs_physical) != 0)
    {
-      LOG_DBG ("VMCLEAR: %s", vmx_get_error_message ());
-      return 0;
+      return -EVMCLEAR;
    }
    if (vmptrld (_cpu_ctx->vmcs_physical) != 0)
    {
-      LOG_DBG ("VMPTRLD: %s", vmx_get_error_message ());
-      return 0;
+      return -EVMPTRLD;
    }
 
-   vmcs_setup_control (_cpu_ctx);
-   vmcs_setup_host (_cpu_ctx);
-   vmcs_setup_guest (_cpu_ctx);
+   if (!vmcs_init_control (_cpu_ctx))
+      LOG_DBG ("control setup failed");
+   if (!vmcs_init_host (_cpu_ctx))
+      LOG_DBG ("host setup failed");
+   if (!vmcs_init_guest (_cpu_ctx, guest))
+      LOG_DBG ("guest setup failed");
 
-   if (!vmcs_run_checks (_cpu_ctx))
+   /*
+   e |= vmcs_init_control (_cpu_ctx);
+   e |= vmcs_init_host (_cpu_ctx);
+   e |= vmcs_init_guest (_cpu_ctx, guest);
+   if (e)
    {
-      LOG_DBG ("invalid vmcs state");
-      return 0;
+      return -EVMSTATE;
+   }
+   */
+
+   if (!vmcs_check (_cpu_ctx))
+   {
+      LOG_DBG ("failure");
+      //return -EVMSTATE;
    }
 
    if (VMX_ERR (vmlaunch ()))
@@ -1026,57 +1071,33 @@ int vmcs_setup (cpu_ctx *_cpu_ctx)
 
 static bool vmcs_check_control_32 (u32 ctl, cap_msr cap)
 {
-   return !((ctl & cap._0) != cap._0 || (ctl & ~cap._1) != 0);
+   if ((ctl & ~cap._1) != 0 || (ctl & cap._0) != cap._0) {
+      return false;
+   }
+   return true;
 }
 
-static bool vmcs_run_checks (cpu_ctx *_cpu_ctx)
+static bool vmcs_check (cpu_ctx *_cpu_ctx)
 {
    // checks on vmx controls [28.2.1]
    cap_msr cap = {0};
+   u64 ctl = 0;
 
-   vmx_pinbased_ctls pinbased = {0};
-   pinbased.ctl = fvmread (VMCS_CTRL_PINBASED_CTLS);
-   cap.ctl = __rdmsr (IA32_VMX_TRUE_PINBASED_CTLS);
-   if (!vmcs_check_control_32 (pinbased.ctl, cap))
+   ctl = vmread1 (VMCS_CTRL_PINBASED_CTLS);
+   cap.ctl = rdmsr1 (IA32_VMX_TRUE_PINBASED_CTLS);
+   if (!vmcs_check_control_32 (ctl, cap))
    {
-      VCPU_DBG ("pinbased controls ERR");
       return false;
    }
 
-   vmx_procbased_ctls procbased = {0};
-   procbased.ctl = fvmread (VMCS_CTRL_PROCBASED_CTLS);
+   ctl = vmread1 (VMCS_CTRL_PROCBASED_CTLS);
    cap.ctl = __rdmsr (IA32_VMX_TRUE_PROCBASED_CTLS);
-   if (!vmcs_check_control_32 (procbased.ctl, cap))
+   if (!vmcs_check_control_32 (ctl, cap))
    {
-      VCPU_DBG ("procbased controls ERR");
-      return false;
+      //return false;
    }
 
-   if (procbased.activate_secondary_controls == 1)
-   {
-      vmx_procbased_ctls2 procbased2 = {0};
-      procbased2.ctl = fvmread (VMCS_CTRL_PROCBASED_CTLS2);
-      cap.ctl = __rdmsr (IA32_VMX_PROCBASED_CTLS2);
-      if (!vmcs_check_control_32 (procbased2.ctl, cap))
-      {
-         VCPU_DBG ("procbased controls 2 ERR");
-         return false;
-      }
-   }
-
-   if (procbased.activate_tertiary_controls == 1)
-   {
-      vmx_procbased_ctls3 procbased3 = {0};
-      procbased3.ctl = fvmread (VMCS_CTRL_PROCBASED_CTLS3);
-      cap.ctl = __rdmsr (IA32_VMX_PROCBASED_CTLS2);
-      if (!vmcs_check_control_32 (procbased3.ctl, cap))
-      {
-         VCPU_DBG ("procbased controls 3 ERR");
-         return false;
-      }
-   }
-
-   if (fvmread (VMCS_CTRL_CR3_TARGET_COUNT) > 4)
+   if (vmread1 (VMCS_CTRL_CR3_TARGET_COUNT) > 4)
    {
       VCPU_DBG ("invalid CR3 target count");
       return false;
@@ -1099,14 +1120,16 @@ static bool vmcs_run_checks (cpu_ctx *_cpu_ctx)
       VCPU_DBG ("msr bitmaps misaligned");
    }
 
+   /*
    if (procbased.use_tpr_shadow == 1)
    {
-      if (fvmread (VMCS_CTRL_VIRTUAL_APIC_ADDRESS) & 0xFFF)
+      if (vmread1 (VMCS_CTRL_VIRTUAL_APIC_ADDRESS) & 0xFFF)
       {
          VCPU_DBG ("virtual apic address misaligned");
          return false;
       }
    }
+   */
 
    VCPU_DBG ("VMCS region OK");
    return true;

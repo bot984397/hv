@@ -252,4 +252,23 @@ typedef union
 #define IA32_FS_BASE                  0xC0000100
 #define IA32_GS_BASE                  0xC0000101
 
+// VM Exit Reason
+typedef union
+{
+   u32 ctl;
+   struct
+   {
+      u32 basic_exit_reason   : 16;
+      u32 cleared_to_0        : 1;
+      u32 undefined_0         : 8;
+      u32 shadow_stack_busy   : 1;
+      u32 bus_lock_assert     : 1;
+      u32 enclave_mode        : 1;
+      u32 pending_mtf         : 1;
+      u32 exit_from_root      : 1;
+      u32 undefined_1         : 1;
+      u32 vm_entry_failure    : 1;
+   };
+} vm_exit_reason;
+
 #endif // __LKM_ARCH_H__

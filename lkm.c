@@ -5,6 +5,7 @@
 #include "vmm.h"
 #include "cpu.h"
 #include "vmcs.h"
+#include "intrin.h"
 #include "common.h"
 #include "hotplug.h"
 
@@ -19,7 +20,7 @@ static int __init lkm_init (void)
       return -EPERM;
    }
 
-   if (vmm_new () == false)
+   if (!vmm_new ())
    {
       cpu_hotplug_unregister ();
       vmm_del ();
@@ -29,12 +30,14 @@ static int __init lkm_init (void)
    on_each_cpu (cpu_init_pre, NULL, true);
    if (g_vmm_ctx->cpu_on != atomic_read (&g_vmm_ctx->cpu_init))
    {
+      LOG_DBG ("cpu_on: %d - cpu_init: %d", g_vmm_ctx->cpu_on, atomic_read(&g_vmm_ctx->cpu_init));
       cpu_hotplug_unregister ();
       vmm_del ();
       return -EPERM;
    }
 
    // hypervisor should be up and running now.
+   LOG_DBG ("all processors were virtualized successfully");
    return 0;
 }
 

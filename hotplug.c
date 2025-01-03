@@ -1,17 +1,14 @@
-#define OLD_CPUHOTPLUG (LINUX_VERSION_CODE <= KERNEL_VERSION(4,8,0))
+#include <asm/cpufeature.h>
 
-#include <linux/version.h>
+#include "common.h"
+#include "hotplug.h"
+
 #if OLD_CPUHOTPLUG
 #include <linux/cpu.h>
 #include <linux/notifier.h>
 #else
 #include <linux/cpuhotplug.h>
 #endif
-#include <asm/cpufeature.h>
-
-#include "common.h"
-#include "hotplug.h"
-#include "cpu.h"
 
 static int cpu_on_cb (unsigned int cpu)
 {

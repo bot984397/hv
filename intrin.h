@@ -200,7 +200,7 @@ static _always_inline_ u8 vmread (u64 f, u64 *v)
    return r;
 }
 
-static _always_inline_ u64 fvmread (u64 f)
+static _always_inline_ u64 vmread1 (u64 f)
 {
    u64 v;
    vmread (f, &v);

@@ -53,15 +53,26 @@ static const char* vmx_error_internal (u64 err)
 
 const char* vmx_get_error_message (void)
 {
-   return vmx_error_internal (fvmread (VMCS_RO_VM_INSTRUCTION_ERROR));
+   return vmx_error_internal (vmread1 (VMCS_RO_VM_INSTRUCTION_ERROR));
 }
 
-int vmexit_handler (void)
+int vmexit_handler (cpu_ctx *_cpu_ctx)
 {
+   LOG_DBG ("vm exit handler called");
+
+   vm_exit_reason exit = { .ctl = vmread1 (VMCS_RO_EXIT_REASON) };
+   if (exit.vm_entry_failure == 1)
+      LOG_DBG ("vm entry failure");
+   else
+      LOG_DBG ("true vm exit");
+
+   LOG_DBG ("exit reason: %d", exit.basic_exit_reason);
+   LOG_DBG ("exit qualification: %llu", vmread1 (VMCS_RO_EXIT_QUALIFICATION));
+
    return 0;
 }
 
-void vmresume_error_handler (void)
+_always_inline_ void vmresume_error_handler (void)
 {
-
+   LOG_DBG ("vmresume error handler called");
 }

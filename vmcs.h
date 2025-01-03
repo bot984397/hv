@@ -8,7 +8,7 @@
 #define TSS_AVAILABLE 0x9
 #define TSS_BUSY 0xB
 
-_warn_unused_result_ int vmcs_setup (cpu_ctx *_cpu_ctx);
+_warn_unused_result_ int vmcs_init_all (cpu_ctx *_cpu_ctx, guest_init guest);
 
 typedef union
 {

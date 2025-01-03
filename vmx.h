@@ -1,6 +1,8 @@
 #ifndef __LKM_VMX_H__
 #define __LKM_VMX_H__
 
+#include "common.h"
+
 const char* vmx_get_error_message (void);
 
 enum __vmx_exit_reasons
@@ -83,7 +85,7 @@ enum __vmx_exit_reasons
    exit_wrmsrlist
 };
 
-int vmexit_handler (void);
+int vmexit_handler (cpu_ctx *_cpu_ctx);
 void vmresume_error_handler (void);
 
 #endif // __LKM_VMX_H__
